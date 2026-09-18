@@ -1,0 +1,21 @@
+# Local dataset images
+data/images/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Local environment
+.venv/
+venv/
+env/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Local dataset archive
+MediShield_selected_images.zip

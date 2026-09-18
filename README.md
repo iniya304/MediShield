@@ -1,14 +1,38 @@
-# MediShield
+<div align="center">
 
-**An AI Safety & Reliability Layer for Medical Vision Models**
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:0f2027,50:2c5364,100:0f2027&height=200&section=header&text=MediShield&fontSize=60&fontColor=ffffff&animation=fadeIn&fontAlignY=35&desc=AI%20Safety%20%26%20Reliability%20Layer%20for%20Medical%20Vision%20Models&descAlignY=55&descSize=18" width="100%"/>
+
+<a href="https://github.com/iniya304/MediShield">
+  <img src="https://readme-typing-svg.demolab.com?font=Fira+Code&weight=500&size=22&duration=3000&pause=800&color=2C5364&center=true&vCenter=true&multiline=true&repeat=true&width=700&height=60&lines=%22Can+we+trust+the+model's+prediction%3F%22;Not+just+classification+%E2%80%94+reliability.;Attack+%E2%80%A2+Detect+%E2%80%A2+Abstain+%E2%80%A2+Explain." alt="Typing SVG" />
+</a>
+
+<br/>
+
+<img src="https://img.shields.io/badge/status-research%20prototype-orange?style=for-the-badge" />
+<img src="https://img.shields.io/badge/python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white" />
+<img src="https://img.shields.io/badge/PyTorch-EfficientNet%20%7C%20ResNet18-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white" />
+<img src="https://img.shields.io/badge/XGBoost-Reliability%20Detector-337AB7?style=for-the-badge" />
+<img src="https://img.shields.io/badge/Streamlit-Demo%20App-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white" />
+
+<br/><br/>
+
+<img src="https://img.shields.io/github/last-commit/iniya304/MediShield?style=flat-square&color=2c5364" />
+<img src="https://img.shields.io/github/languages/top/iniya304/MediShield?style=flat-square&color=0f2027" />
+<img src="https://img.shields.io/github/stars/iniya304/MediShield?style=flat-square&color=yellow" />
+<img src="https://img.shields.io/badge/dataset-HAM10000-6c63ff?style=flat-square" />
+<img src="https://komarev.com/ghpvc/?username=iniya304-medishield&label=Repo+Views&color=0f2027&style=flat-square" />
+
+</div>
+
+<br/>
 
 > MediShield does not merely ask *"What does the medical image show?"* — it asks *"Can we trust the model's prediction?"*
 
-MediShield is a **research prototype**, not a clinical diagnostic system. It should never be presented, marketed, or used as a replacement for a dermatologist or a clinical diagnostic workflow.
+> ⚠️ **MediShield is a research prototype**, not a clinical diagnostic system. It should never be presented, marketed, or used as a replacement for a dermatologist or a clinical diagnostic workflow.
 
 ---
 
-## Table of Contents
+## 📑 Table of Contents
 
 1. [Overview](#1-overview)
 2. [The Core Problem](#2-the-core-problem)
@@ -42,15 +66,15 @@ MediShield is a research-oriented prototype for testing and improving the reliab
 
 The system combines several fields into one closed evaluation loop:
 
-- Medical computer vision
-- Deep learning (transfer learning with CNNs)
-- Adversarial machine learning
-- Reliability / uncertainty analysis
-- Gradient-boosted trees (XGBoost)
-- Explainable AI (Grad-CAM)
-- Failure detection
-- Selective prediction / abstention
-- Robustness stress testing
+- 🩻 Medical computer vision
+- 🧠 Deep learning (transfer learning with CNNs)
+- ⚔️ Adversarial machine learning
+- 📊 Reliability / uncertainty analysis
+- 🌲 Gradient-boosted trees (XGBoost)
+- 🔍 Explainable AI (Grad-CAM)
+- 🚨 Failure detection
+- 🙅 Selective prediction / abstention
+- 🌪️ Robustness stress testing
 
 **MediShield should be pitched as:**
 > "We built a reliability and safety layer around a medical vision model and tested whether it can recognize when its own prediction becomes unreliable."
@@ -155,7 +179,8 @@ That six-step chain is the identity of MediShield — not the number of models i
 
 ## 5. Architecture
 
-### 5.1 High-level system architecture
+<details>
+<summary><b>5.1 High-level system architecture (click to expand)</b></summary>
 
 ```text
                          MEDISHIELD
@@ -219,6 +244,8 @@ Model behavior
 Reliability analysis
 ```
 
+</details>
+
 ### 5.2 Component responsibilities
 
 | Layer | Component | Responsibility |
@@ -232,7 +259,8 @@ Reliability analysis
 | Explainability | Grad-CAM | Visualize which image regions drove the CNN's decision, clean vs. perturbed |
 | Interface | Streamlit dashboard | Upload an image, run the full pipeline, and visualize every stage interactively |
 
-### 5.3 Data flow, end to end
+<details>
+<summary><b>5.3 Data flow, end to end (click to expand)</b></summary>
 
 ```text
 1. User uploads a dermoscopic image
@@ -256,6 +284,8 @@ Reliability analysis
 8. Grad-CAM renders a heatmap for the accepted prediction
    (and, in stress-test mode, a side-by-side clean vs. perturbed map)
 ```
+
+</details>
 
 ### 5.4 Why two separately-trained models are used
 
@@ -599,16 +629,18 @@ Plotting selective risk against coverage as the reliability threshold varies is 
 
 ## 16. Experiments
 
-| ID | Experiment | Input | Metrics |
-|---|---|---|---|
-| E1 | Baseline EfficientNet | Clean images | Accuracy, Precision, Recall, F1, Confusion matrix |
-| E2 | ResNet18 Benchmark | Clean images | Accuracy, F1, Confusion matrix |
-| E3 | FGSM Attack | FGSM-perturbed images | Clean vs. FGSM accuracy, accuracy drop, confidence change, attack success rate |
-| E4 | PGD Attack | PGD-perturbed images | Clean vs. PGD accuracy, accuracy drop, confidence change, attack success rate |
-| E5 | Reliability Detector | Reliability feature vectors | Accuracy, Precision, Recall, F1, ROC-AUC |
-| E6 | Stress Test Matrix | Clean, FGSM, PGD, Noise, Blur, Brightness, Compression | Accuracy, confidence, prediction consistency, reliability score |
-| E7 | Abstention | Reliability scores + threshold | Coverage, selective risk, accepted-prediction error, abstention rate |
-| E8 | Grad-CAM | Clean vs. perturbed images | Qualitative comparison (+ similarity metric if time permits) |
+| ID | Experiment | Input | Metrics | Status |
+|---|---|---|---|---|
+| E1 | Baseline EfficientNet | Clean images | Accuracy, Precision, Recall, F1, Confusion matrix | ![done](https://img.shields.io/badge/-done-brightgreen) |
+| E2 | ResNet18 Benchmark | Clean images | Accuracy, F1, Confusion matrix | ![done](https://img.shields.io/badge/-done-brightgreen) |
+| E3 | FGSM Attack | FGSM-perturbed images | Clean vs. FGSM accuracy, accuracy drop, confidence change, attack success rate | ![done](https://img.shields.io/badge/-done-brightgreen) |
+| E4 | PGD Attack | PGD-perturbed images | Clean vs. PGD accuracy, accuracy drop, confidence change, attack success rate | ![done](https://img.shields.io/badge/-done-brightgreen) |
+| E5 | Reliability Detector | Reliability feature vectors | Accuracy, Precision, Recall, F1, ROC-AUC | ![done](https://img.shields.io/badge/-done-brightgreen) |
+| E6 | Stress Test Matrix | Clean, FGSM, PGD, Noise, Blur, Brightness, Compression | Accuracy, confidence, prediction consistency, reliability score | ![in%20progress](https://img.shields.io/badge/-in%20progress-yellow) |
+| E7 | Abstention | Reliability scores + threshold | Coverage, selective risk, accepted-prediction error, abstention rate | ![in%20progress](https://img.shields.io/badge/-in%20progress-yellow) |
+| E8 | Grad-CAM | Clean vs. perturbed images | Qualitative comparison (+ similarity metric if time permits) | ![in%20progress](https://img.shields.io/badge/-in%20progress-yellow) |
+
+> Status badges are illustrative — update per-row to reflect your actual progress (`done`, `in progress`, `todo`).
 
 **Required minimum outputs:** baseline metrics, confusion matrix, FGSM results, PGD results, reliability detector metrics, stress-test comparison, coverage-risk plot, Grad-CAM examples, and a working demo.
 
@@ -616,7 +648,10 @@ Plotting selective risk against coverage as the reliability threshold varies is 
 
 ## 17. Results (Template)
 
-*(Fill in after running the experiments above — all values below are placeholders.)*
+<details>
+<summary><b>Click to expand results tables (fill in after running experiments)</b></summary>
+
+*(All values below are placeholders — replace with real numbers.)*
 
 **Classification**
 
@@ -655,6 +690,8 @@ Plotting selective risk against coverage as the reliability threshold varies is 
 | F1 | TBD |
 | ROC-AUC | TBD |
 
+</details>
+
 ---
 
 ## 18. Demo Application
@@ -692,9 +729,24 @@ The Streamlit dashboard follows this recommended interface:
 Key message conveyed by the demo:
 > The system is not only making a prediction. It is checking whether the prediction remains trustworthy under stress.
 
+> 💡 Tip: record a short screen-capture GIF of this exact flow and drop it here (`![demo](assets/demo.gif)`) — a real animated demo GIF is the single biggest visual upgrade you can make to this README.
+
 ---
 
 ## 19. Technology Stack
+
+<div align="center">
+
+![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![PyTorch](https://img.shields.io/badge/PyTorch-EE4C2C?style=for-the-badge&logo=pytorch&logoColor=white)
+![XGBoost](https://img.shields.io/badge/XGBoost-337AB7?style=for-the-badge)
+![OpenCV](https://img.shields.io/badge/OpenCV-5C3EE8?style=for-the-badge&logo=opencv&logoColor=white)
+![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white)
+![scikit-learn](https://img.shields.io/badge/scikit--learn-F7931E?style=for-the-badge&logo=scikitlearn&logoColor=white)
+![Jupyter](https://img.shields.io/badge/Jupyter-F37626?style=for-the-badge&logo=jupyter&logoColor=white)
+![Google Colab](https://img.shields.io/badge/Colab-F9AB00?style=for-the-badge&logo=googlecolab&logoColor=white)
+
+</div>
 
 | Category | Tools |
 |---|---|
@@ -717,6 +769,9 @@ Key message conveyed by the demo:
 ---
 
 ## 20. Project Structure
+
+<details>
+<summary><b>Click to expand full folder tree</b></summary>
 
 ```text
 MediShield/
@@ -756,6 +811,8 @@ MediShield/
     └── streamlit_app.py       # Interactive demo
 ```
 
+</details>
+
 ---
 
 ## 21. How to Run
@@ -765,7 +822,7 @@ MediShield/
 **1. Environment setup**
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/iniya304/MediShield.git
 cd MediShield
 pip install torch torchvision xgboost scikit-learn pillow streamlit
 ```
@@ -824,3 +881,13 @@ Stated plainly, for transparency:
 **MediShield** is a research prototype that adds an AI safety and reliability layer to a medical vision classifier. It combines EfficientNet-based skin-lesion classification with adversarial stress testing, XGBoost-based reliability detection, explainability, and selective abstention. The system evaluates not only *what* the model predicts, but *whether the model's behavior provides evidence that the prediction can be trusted*.
 
 > "MediShield challenges the assumption that a confident medical AI prediction is automatically trustworthy. We stress-test the model, learn its reliability patterns, detect suspicious predictions, and allow the system to abstain when confidence alone is not enough."
+
+<div align="center">
+
+<br/>
+
+⭐ If this project is useful to you, consider starring the repo!
+
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:0f2027,50:2c5364,100:0f2027&height=120&section=footer" width="100%"/>
+
+</div>

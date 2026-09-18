@@ -1,0 +1,13 @@
+paths:
+  data_dir: "data/images"
+  metadata_csv: "data/selected_images.csv"
+  models_dir: "models/"
+
+training:
+  batch_size: 32
+  learning_rate: 0.0001
+  epochs: 30
+  
+safety:
+  reliability_threshold: 0.8
+  quality_threshold: 0.7

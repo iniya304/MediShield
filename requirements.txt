@@ -1,0 +1,14 @@
+torch
+torchvision
+pandas
+numpy
+pillow
+scikit-learn
+pytest
+xgboost
+shap
+scikit-image
+opencv-python
+streamlit
+pyyaml
+scipy
