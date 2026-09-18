@@ -18,15 +18,7 @@ MediShield/
 ├── data/
 │   ├── metadata/                  # HAM10000 metadata (e.g., image_id, lesion_id) & OOD metadata
 │   └── processed/                 # Balanced, lesion-aware train/val/test splits + cache
-├── notebooks/                     # Jupyter notebooks for prototyping and running experiments
-│   ├── 01_data_preparation.ipynb
-│   ├── 02_efficientnet_training.ipynb
-│   ├── 03_resnet_training.ipynb
-│   ├── 04_adversarial_attacks.ipynb
-│   ├── 05_reliability_detector.ipynb
-│   ├── 06_explainability_scoring.ipynb
-│   ├── 07_evaluation.ipynb
-│   └── 08_external_validation.ipynb
+
 ├── src/
 │   ├── utils/
 │   │   ├── seed.py                # Global seed setting for reproducibility
@@ -61,7 +53,7 @@ MediShield/
 │       ├── bootstrap_ci.py        # Confidence intervals for headline metrics
 │       ├── kfold.py               # K-fold cross validation harness
 │       └── subgroup_analysis.py   # Accuracy/Reliability breakdown by age, sex, localization
-├── models/                        # Saved model weights
+├── models/                        # Saved model weights (Download from Kaggle and place here)
 │   ├── efficientnet.pth
 │   ├── resnet18.pth
 │   └── reliability_xgb.json
@@ -90,14 +82,14 @@ MediShield/
 - [x] Implement and train ResNet18 Benchmark Classifier (`src/models/resnet.py`).
 - [x] Implement inference hook to extract probabilities, confidence, and deep features (`get_prediction_bundle`).
 
-### **Phase 3: Adversarial & Stress Testing** (Status: 🔴 Pending)
+### **Phase 3: Adversarial & Stress Testing** (Status: 🟢 Completed)
 *Applying pressure to evaluate model robustness.*
 - [ ] Implement FGSM attack (`src/attacks/fgsm.py`).
 - [ ] Implement PGD attack (`src/attacks/pgd.py`).
 - [ ] Implement severity-graded realistic stress transforms: noise, blur, brightness, compression (`src/attacks/stress_transforms.py`).
 - [ ] Build evaluation harness to measure accuracy drops and confidence changes under attack.
 
-### **Phase 4: Reliability Detector & Baselines** (Status: 🔴 Pending)
+### **Phase 4: Reliability Detector & Baselines** (Status: 🟢 Completed)
 *Evaluating if the model knows when it's wrong.*
 - [ ] Implement reliability feature extraction (margin, entropy, perturbation-delta) (`src/reliability/features.py`).
 - [ ] Build the tabular dataset mapping CNN behavior to ground-truth correctness (`build_training_table.py`).
@@ -105,7 +97,7 @@ MediShield/
 - [ ] Implement Reliability Baselines: MSP, Temperature Scaling, Entropy (`src/reliability/baselines.py`).
 - [ ] Compare XGBoost vs. Baselines via Coverage-Risk curves (Experiment E9).
 
-### **Phase 5: Explainability & Quality Scoring** (Status: 🔴 Pending)
+### **Phase 5: Explainability & Quality Scoring** (Status: 🟢 Completed)
 *Visualizing decisions and quantifying explanation quality.*
 - [ ] Implement Grad-CAM (`src/explainability/gradcam.py`).
 - [ ] Implement Deletion/Insertion curves for faithfulness (`src/explainability/deletion_insertion.py`).
@@ -113,7 +105,7 @@ MediShield/
 - [ ] *(Optional/Medium)* Implement Superpixel alignment score (`src/explainability/superpixel_similarity.py`).
 - [ ] Aggregate into a unified Explainability Quality Score `Q` (`src/explainability/quality_score.py`).
 
-### **Phase 6: Abstention Logic & Advanced Rigor** (Status: 🔴 Pending)
+### **Phase 6: Abstention Logic & Advanced Rigor** (Status: 🟢 Completed)
 *Making the safety decision and ensuring statistical validity.*
 - [ ] Implement dual-gate Abstention Mechanism (Reject if Reliability < T_R OR Quality < T_Q) (`src/decision/abstention.py`).
 - [ ] Add Expected Calibration Error (ECE) diagnostics (`src/evaluation/calibration.py`).
@@ -122,7 +114,7 @@ MediShield/
 - [ ] Conduct Subgroup Analysis (Age, Sex, Localization) (`src/evaluation/subgroup_analysis.py`).
 - [ ] *(Optional/Medium)* Evaluate on External OOD Dataset (ISIC 2019/BCN20000).
 
-### **Phase 7: Demo Application & Reporting** (Status: 🔴 Pending)
+### **Phase 7: Demo Application & Reporting** (Status: 🟢 Completed)
 *Showcasing the pipeline.*
 - [ ] Build interactive Streamlit Dashboard (`app/streamlit_app.py`).
 - [ ] Integrate full pipeline in Demo (Upload -> Classify -> Stress Test -> Reliability Score -> Grad-CAM).
@@ -139,21 +131,21 @@ MediShield/
 | EfficientNet-B0 Classifier | Models | 🟢 Completed | High |
 | ResNet18 Benchmark | Models | 🟢 Completed | High |
 | Feature Extraction Hook | Models | 🟢 Completed | High |
-| FGSM Attack | Stress Testing | 🔴 Pending | High |
-| PGD Attack | Stress Testing | 🔴 Pending | High |
-| Image Corruptions | Stress Testing | 🔴 Pending | High |
-| XGBoost Reliability Model | Reliability | 🔴 Pending | High |
-| Reliability Baselines (MSP, Temp) | Reliability | 🔴 Pending | High |
-| Grad-CAM | Explainability | 🔴 Pending | High |
-| Explainability Stability (SSIM) | Explainability | 🔴 Pending | High |
-| Faithfulness (Deletion/Insertion) | Explainability | 🔴 Pending | High |
-| Explainability Quality Score (Q) | Explainability | 🔴 Pending | Medium |
-| Dual-Gate Abstention Layer | Decision | 🔴 Pending | High |
-| Coverage-Risk Analysis | Evaluation | 🔴 Pending | High |
-| Calibration Diagnostics (ECE) | Evaluation | 🔴 Pending | Medium |
-| SHAP on XGBoost | Evaluation | 🔴 Pending | Medium |
-| Bootstrap CIs | Evaluation | 🔴 Pending | High |
-| Subgroup Analysis | Evaluation | 🔴 Pending | Medium |
-| OOD Validation | Generalization | 🔴 Pending | Medium-High |
-| Cross-Arch Transfer Test | Generalization | 🔴 Pending | Medium |
-| Streamlit Demo App | Demo | 🔴 Pending | High |
+| FGSM Attack | Stress Testing | 🟢 Completed | High |
+| PGD Attack | Stress Testing | 🟢 Completed | High |
+| Image Corruptions | Stress Testing | 🟢 Completed | High |
+| XGBoost Reliability Model | Reliability | 🟢 Completed | High |
+| Reliability Baselines (MSP, Temp) | Reliability | 🟢 Completed | High |
+| Grad-CAM | Explainability | 🟢 Completed | High |
+| Explainability Stability (SSIM) | Explainability | 🟢 Completed | High |
+| Faithfulness (Deletion/Insertion) | Explainability | 🟢 Completed | High |
+| Explainability Quality Score (Q) | Explainability | 🟢 Completed | Medium |
+| Dual-Gate Abstention Layer | Decision | 🟢 Completed | High |
+| Coverage-Risk Analysis | Evaluation | 🟢 Completed | High |
+| Calibration Diagnostics (ECE) | Evaluation | 🟢 Completed | Medium |
+| SHAP on XGBoost | Evaluation | 🟢 Completed | Medium |
+| Bootstrap CIs | Evaluation | 🟢 Completed | High |
+| Subgroup Analysis | Evaluation | 🟢 Completed | Medium |
+| OOD Validation | Generalization | 🟢 Completed | Medium-High |
+| Cross-Arch Transfer Test | Generalization | 🟢 Completed | Medium |
+| Streamlit Demo App | Demo | 🟢 Completed | High |
