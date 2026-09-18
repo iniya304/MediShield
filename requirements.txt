@@ -12,3 +12,5 @@ opencv-python
 streamlit
 pyyaml
 scipy
+grad-cam
+quantus

@@ -1,41 +1,21 @@
-import torch
-import torch.nn.functional as F
-import numpy as np
-import cv2
+from pytorch_grad_cam import GradCAM as BaseGradCAM
+from pytorch_grad_cam.utils.model_targets import ClassifierOutputTarget
 
 class GradCAM:
-    def __init__(self, model, target_layer):
+    def __init__(self, model, target_layers):
+        """
+        Wrapper around pytorch-grad-cam library.
+        target_layers should be a list of layers, e.g. [model.features[-1]]
+        """
         self.model = model
-        self.target_layer = target_layer
-        self.gradients = None
-        self.activations = None
-        
-        target_layer.register_forward_hook(self.save_activation)
-        target_layer.register_full_backward_hook(self.save_gradient)
-        
-    def save_activation(self, module, input, output):
-        self.activations = output
-        
-    def save_gradient(self, module, grad_input, grad_output):
-        self.gradients = grad_output[0]
+        self.cam = BaseGradCAM(model=model, target_layers=target_layers)
         
     def generate(self, input_tensor, target_class=None):
-        self.model.zero_grad()
-        output = self.model(input_tensor)
-        
-        if target_class is None:
-            target_class = output.argmax(dim=1).item()
+        if target_class is not None:
+            targets = [ClassifierOutputTarget(target_class)]
+        else:
+            targets = None # Automatically targets the highest scoring class
             
-        score = output[0, target_class]
-        score.backward(retain_graph=True)
-        
-        weights = torch.mean(self.gradients, dim=[2, 3], keepdim=True)
-        cam = torch.sum(weights * self.activations, dim=1).squeeze()
-        cam = F.relu(cam)
-        
-        cam = cam.cpu().detach().numpy()
-        cam = cv2.resize(cam, (input_tensor.shape[3], input_tensor.shape[2]))
-        
-        cam = cam - np.min(cam)
-        cam = cam / (np.max(cam) + 1e-7)
-        return cam
+        grayscale_cam = self.cam(input_tensor=input_tensor, targets=targets)
+        # Returns [batch_size, H, W], we take the first item
+        return grayscale_cam[0, :]
