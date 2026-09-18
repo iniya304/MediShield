@@ -1,622 +1,458 @@
-# MediShield
+<div align="center">
 
-**An AI Safety & Reliability Layer for Medical Vision Models**
+<br/>
 
-> MediShield does not merely ask *"What does the medical image show?"* — it asks *"Can we trust the model's prediction?"*
+<h1 align="center">
+  <sub>
+    <img src="https://img.shields.io/badge/-●-4FD1FF?style=flat-square&labelColor=0D1117" width="10"/>
+  </sub>
+  &nbsp;MediShield
+</h1>
 
-MediShield is a **research prototype**, not a clinical diagnostic system. It should never be presented, marketed, or used as a replacement for a dermatologist or a clinical diagnostic workflow.
+<p align="center"><sub>A reliability and safety layer for medical vision models</sub></p>
 
----
+<br/>
 
-## Table of Contents
+<a href="https://github.com/iniya304/MediShield">
+  <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=400&size=15&pause=1400&color=8B98A9&center=true&vCenter=true&width=560&height=24&lines=predict+%E2%86%92+attack+%E2%86%92+observe+%E2%86%92+detect+%E2%86%92+abstain+%E2%86%92+explain" alt="pipeline"/>
+</a>
 
-1. [Overview](#1-overview)
-2. [The Core Problem](#2-the-core-problem)
-3. [Research Question](#3-research-question)
-4. [Why This Is More Than Classification](#4-why-this-is-more-than-classification)
-5. [Architecture](#5-architecture)
-6. [Dataset](#6-dataset)
-7. [Data Splitting Rules (Leakage Prevention)](#7-data-splitting-rules-leakage-prevention)
-8. [Image Preprocessing](#8-image-preprocessing)
-9. [Models](#9-models)
-10. [Reliability Detector (XGBoost)](#10-reliability-detector-xgboost)
-11. [Adversarial Machine Learning](#11-adversarial-machine-learning)
-12. [Realistic Stress Testing](#12-realistic-stress-testing)
-13. [Explainable AI (Grad-CAM)](#13-explainable-ai-grad-cam)
-14. [Abstention Mechanism](#14-abstention-mechanism)
-15. [Coverage vs. Risk](#15-coverage-vs-risk)
-16. [Experiments](#16-experiments)
-17. [Results (Template)](#17-results-template)
-18. [Demo Application](#18-demo-application)
-19. [Technology Stack](#19-technology-stack)
-20. [Project Structure](#20-project-structure)
-21. [How to Run](#21-how-to-run)
-22. [Scientific Limitations](#22-scientific-limitations)
-23. [Final Project Definition](#23-final-project-definition)
+<br/><br/>
 
----
+<img src="https://img.shields.io/badge/status-research%20prototype-1a1f29?style=flat-square&labelColor=0D1117&color=161B22" height="24"/>
+<img src="https://img.shields.io/badge/python-3.10+-161B22?style=flat-square&logo=python&logoColor=4FD1FF&labelColor=0D1117" height="24"/>
+<img src="https://img.shields.io/badge/pytorch-EfficientNet%20·%20ResNet18-161B22?style=flat-square&logo=pytorch&logoColor=4FD1FF&labelColor=0D1117" height="24"/>
+<img src="https://img.shields.io/badge/xgboost-reliability%20detector-161B22?style=flat-square&labelColor=0D1117&color=161B22" height="24"/>
+<img src="https://img.shields.io/badge/dataset-HAM10000-161B22?style=flat-square&labelColor=0D1117" height="24"/>
 
-## 1. Overview
+<br/><br/>
 
-MediShield is a research-oriented prototype for testing and improving the reliability of a medical image classification model. It uses a deep-learning skin-lesion classifier as the **prediction engine**, then wraps it in a **reliability layer** that evaluates whether each individual prediction actually deserves to be trusted.
+</div>
 
-The system combines several fields into one closed evaluation loop:
+<div align="center">
+<sub>MediShield does not only ask <i>what does the image show</i> — it asks <b>can this prediction be trusted</b>.</sub>
+</div>
 
-- Medical computer vision
-- Deep learning (transfer learning with CNNs)
-- Adversarial machine learning
-- Reliability / uncertainty analysis
-- Gradient-boosted trees (XGBoost)
-- Explainable AI (Grad-CAM)
-- Failure detection
-- Selective prediction / abstention
-- Robustness stress testing
+<br/>
 
-**MediShield should be pitched as:**
-> "We built a reliability and safety layer around a medical vision model and tested whether it can recognize when its own prediction becomes unreliable."
+> [!WARNING]
+> **Research prototype — not a clinical tool.** MediShield must never be presented, marketed, or used as a substitute for a dermatologist or a clinical diagnostic workflow.
 
-**Not as:**
-> "We trained a skin-cancer classifier."
+<br/>
 
 ---
 
-## 2. The Core Problem
+<br/>
 
-A conventional medical-image AI pipeline looks like this:
+### Contents
 
-```text
-Medical Image
-     ↓
-CNN
-     ↓
-Disease Prediction
-```
+<sub>
 
-For example:
+`01` [Overview](#01--overview) &nbsp;·&nbsp;
+`02` [The Core Problem](#02--the-core-problem) &nbsp;·&nbsp;
+`03` [Research Questions](#03--research-questions) &nbsp;·&nbsp;
+`04` [Beyond Classification](#04--beyond-classification) &nbsp;·&nbsp;
+`05` [Architecture](#05--architecture)
 
-```text
-Skin lesion
-     ↓
-EfficientNet-B0
-     ↓
-Melanoma — 94%
-```
+`06` [Dataset](#06--dataset) &nbsp;·&nbsp;
+`07` [Data Splitting](#07--data-splitting) &nbsp;·&nbsp;
+`08` [Preprocessing](#08--image-preprocessing) &nbsp;·&nbsp;
+`09` [Models](#09--models) &nbsp;·&nbsp;
+`10` [Reliability Detector](#10--reliability-detector)
 
-The problem is that **a high-confidence prediction is not automatically a trustworthy prediction**. A model can:
+`11` [Adversarial ML](#11--adversarial-machine-learning) &nbsp;·&nbsp;
+`12` [Stress Testing](#12--realistic-stress-testing) &nbsp;·&nbsp;
+`13` [Explainability](#13--explainable-ai) &nbsp;·&nbsp;
+`14` [Abstention](#14--abstention-mechanism) &nbsp;·&nbsp;
+`15` [Coverage vs. Risk](#15--coverage-vs-risk)
 
-- Make an incorrect prediction with high confidence
-- Become unstable after small input changes
-- React badly to adversarial perturbations
-- Change its prediction after image degradation (noise, blur, compression, brightness shifts)
-- Produce explanations that shift substantially under perturbation
-- Encounter an input outside the distribution it learned from
+`16` [Experiments](#16--experiments) &nbsp;·&nbsp;
+`17` [Results](#17--results) &nbsp;·&nbsp;
+`18` [Demo](#18--demo) &nbsp;·&nbsp;
+`19` [Stack](#19--technology-stack) &nbsp;·&nbsp;
+`20` [Structure](#20--project-structure) &nbsp;·&nbsp;
+`21` [Setup](#21--how-to-run) &nbsp;·&nbsp;
+`22` [Limitations](#22--scientific-limitations)
 
-MediShield adds a reliability layer on top of the raw classifier:
+</sub>
 
-```text
-Image
-  ↓
-Medical Vision Model
-  ↓
-Prediction + Confidence + Features
-  ↓
-Reliability Analysis
-  ↓
-Trust / Suspicious
-  ↓
-Accept prediction OR Abstain
-```
+<br/>
 
 ---
 
-## 3. Research Question
+## 01 — Overview
 
-**Primary question:**
-> Can we detect when a medical vision model's prediction has become unreliable, especially under adversarial or realistic image perturbations?
+MediShield is a research prototype for testing and improving the reliability of a medical image classifier. A deep-learning skin-lesion model acts as the **prediction engine**; a second, independent layer evaluates whether each individual prediction actually deserves to be trusted.
 
-**Secondary questions:**
+The system closes the loop across several disciplines:
 
-1. How much does model performance degrade under FGSM and PGD attacks?
-2. Does model confidence change when the input is perturbed?
-3. Can behavioral features help detect incorrect predictions?
-4. Can an XGBoost reliability model distinguish trustworthy from suspicious predictions?
-5. Can an abstention mechanism reduce error among predictions the system chooses to accept?
-6. Do model explanations (Grad-CAM) change when the input is manipulated?
+&nbsp;&nbsp;medical computer vision &nbsp;·&nbsp; transfer learning (CNNs) &nbsp;·&nbsp; adversarial machine learning &nbsp;·&nbsp; uncertainty analysis
+&nbsp;&nbsp;gradient-boosted trees (XGBoost) &nbsp;·&nbsp; explainable AI (Grad-CAM) &nbsp;·&nbsp; selective prediction / abstention
 
----
+<br/>
 
-## 4. Why This Is More Than Classification
+**Frame it as**
+> "A reliability and safety layer around a medical vision model, tested on whether it can recognize when its own prediction becomes unreliable."
 
-Classification is only the first layer. The actual contribution stacks several layers on top of it:
+**Not as**
+> "A skin-cancer classifier."
 
-```text
-Medical Classification
-        +
-Adversarial Stress Testing
-        +
-Reliability Detection
-        +
-Failure Detection
-        +
-Abstention
-        +
-Explainability
-```
-
-The strongest technical narrative is:
-
-```text
-Classification → Attack → Observe behavior → Detect unreliability → Abstain → Explain
-```
-
-That six-step chain is the identity of MediShield — not the number of models it contains.
+<br/>
 
 ---
 
-## 5. Architecture
+## 02 — The Core Problem
 
-### 5.1 High-level system architecture
+A conventional medical-image pipeline is a single hop:
 
-```text
-                         MEDISHIELD
-                              │
-                              ▼
-                     ┌────────────────┐
-                     │   Input Image  │
-                     └───────┬────────┘
-                             │
-                             ▼
-                    ┌──────────────────┐
-                    │ EfficientNet-B0  │
-                    │ Main Classifier  │
-                    └────────┬─────────┘
-                             │
-              ┌──────────────┼──────────────┐
-              │              │              │
-              ▼              ▼              ▼
-        Probabilities     Confidence    Deep Features
-              │              │              │
-              └──────────────┼──────────────┘
-                             │
-                             ▼
-                  ┌────────────────────┐
-                  │ Reliability Feature│
-                  │      Engine        │
-                  └─────────┬──────────┘
-                             │
-                             ▼
-                        ┌─────────┐
-                        │ XGBoost │
-                        └────┬────┘
-                             │
-                             ▼
-                    Reliability Score
-                       /          \
-                      /            \
-                   HIGH            LOW
-                    │                │
-                    ▼                ▼
-                 ACCEPT           ABSTAIN
-                    │                │
-                    ▼                ▼
-               Prediction       Human Review
-                    │
-                    ▼
-                 Grad-CAM
+```
+Medical Image  →  CNN  →  Disease Prediction
+```
+```
+Skin lesion  →  EfficientNet-B0  →  Melanoma, 94%
 ```
 
-Running alongside the main pipeline is the **stress-testing / robustness loop**, which feeds perturbed images back through the same pipeline to observe how behavior changes under pressure:
+A high-confidence prediction is not automatically a trustworthy one. A model can be confidently wrong, unstable under imperceptible input changes, fragile against adversarial perturbation, sensitive to routine degradation (noise, blur, compression, brightness), inconsistent in its own explanations, or simply out of distribution.
 
-```text
-Clean image
-    ↓
-FGSM / PGD / Noise / Blur / Brightness / Compression
-    ↓
-Stress testing
-    ↓
-Model behavior
-    ↓
-Reliability analysis
+MediShield inserts a reliability layer between prediction and output:
+
+```
+Image  →  Vision Model  →  Prediction + Confidence + Features
+       →  Reliability Analysis  →  Trust / Suspicious
+       →  Accept  OR  Abstain
 ```
 
-### 5.2 Component responsibilities
+<br/>
+
+---
+
+## 03 — Research Questions
+
+**Primary**
+> Can we detect when a medical vision model's prediction has become unreliable — especially under adversarial or realistic perturbation?
+
+**Secondary**
+
+1. How much does performance degrade under FGSM and PGD attacks?
+2. Does confidence shift meaningfully when the input is perturbed?
+3. Can behavioral features distinguish correct from incorrect predictions?
+4. Can XGBoost learn to separate trustworthy from suspicious outputs?
+5. Does abstention reduce error among the predictions the system chooses to keep?
+6. Do Grad-CAM explanations drift under manipulation?
+
+<br/>
+
+---
+
+## 04 — Beyond Classification
+
+Classification is the first layer only. The contribution is the stack on top of it:
+
+```
+Classification + Adversarial Stress Testing + Reliability Detection + Abstention + Explainability
+```
+
+<div align="center">
+
+**classify → attack → observe → detect → abstain → explain**
+
+<sub>the six-step chain is the identity of the project — not the number of models it contains</sub>
+
+</div>
+
+<br/>
+
+---
+
+## 05 — Architecture
+
+```mermaid
+flowchart TD
+    A["Input image"] --> B["EfficientNet-B0<br/>main classifier"]
+    B --> C["Probabilities"]
+    B --> D["Confidence"]
+    B --> E["Deep features"]
+    C --> F["Reliability feature engine"]
+    D --> F
+    E --> F
+    F --> G["XGBoost<br/>reliability detector"]
+    G --> H{{"Reliability score"}}
+    H -->|high| I["Accept"]
+    H -->|low| J["Abstain → human review"]
+    I --> K["Grad-CAM"]
+
+    classDef default fill:#161B22,stroke:#30363D,color:#E6EDF3,rx:4,ry:4
+    classDef accent fill:#0D1B2A,stroke:#4FD1FF,color:#E6EDF3,rx:4,ry:4
+    classDef warn fill:#0D1B2A,stroke:#8B5CF6,color:#E6EDF3,rx:4,ry:4
+    class B,G accent
+    class H,J warn
+```
+
+<sub>a parallel stress-testing loop feeds perturbed images through the same pipeline to observe how behavior changes under pressure — <code>clean → FGSM / PGD / noise / blur / brightness / compression → reliability analysis</code></sub>
+
+<br/>
+
+**Component responsibilities**
 
 | Layer | Component | Responsibility |
 |---|---|---|
-| Prediction engine | EfficientNet-B0 | Classify the lesion; expose probabilities, confidence, and deep features |
-| Benchmark | ResNet18 | Independent architecture used to check whether reliability issues are model-specific |
+| Prediction engine | EfficientNet-B0 | Classify the lesion; expose probabilities, confidence, deep features |
+| Benchmark | ResNet18 | Independent architecture, checks whether reliability issues are model-specific |
 | Stress layer | FGSM, PGD, noise, blur, brightness, compression | Perturb the input to probe robustness |
-| Feature engine | Custom feature extraction code | Turn raw model outputs + perturbation behavior into a tabular feature vector |
-| Reliability detector | XGBoost (binary classifier) | Predict whether the classifier's prediction is likely correct/reliable |
-| Decision layer | Threshold-based abstention logic | Convert a reliability score into an Accept / Abstain decision |
-| Explainability | Grad-CAM | Visualize which image regions drove the CNN's decision, clean vs. perturbed |
-| Interface | Streamlit dashboard | Upload an image, run the full pipeline, and visualize every stage interactively |
+| Feature engine | Custom extraction code | Turn model outputs + perturbation behavior into a feature vector |
+| Reliability detector | XGBoost | Predict whether a given prediction is likely correct |
+| Decision layer | Threshold-based logic | Convert reliability score into Accept / Abstain |
+| Explainability | Grad-CAM | Visualize which regions drove the decision, clean vs. perturbed |
+| Interface | Streamlit | Upload an image, run the pipeline, inspect every stage |
 
-### 5.3 Data flow, end to end
+<details>
+<summary><sub>end-to-end data flow</sub></summary>
+<br/>
 
-```text
+```
 1. User uploads a dermoscopic image
-2. Image is preprocessed (resize → 224x224, ImageNet normalization)
-3. EfficientNet-B0 produces:
-     - class probabilities (bkl, mel, nv)
-     - predicted class
-     - confidence (max probability)
-     - deep feature embedding
-4. (Optional) The image is perturbed via FGSM/PGD/stress transforms
-     and re-run through step 3, producing a second set of outputs
-5. The Reliability Feature Engine assembles a feature vector from:
-     - probabilities, confidence, margin, entropy
-     - perturbation-derived behavioral features (if attack was run)
-6. XGBoost consumes the feature vector and outputs a reliability
-   probability (0-1)
-7. The Abstention Layer compares the reliability score to a
-   validation-tuned threshold:
-     - score >= threshold  → ACCEPT  → show prediction + Grad-CAM
-     - score <  threshold  → ABSTAIN → flag for human review
+2. Image preprocessed → 224×224, ImageNet normalization
+3. EfficientNet-B0 outputs class probabilities, predicted class,
+   confidence, and a deep feature embedding
+4. (optional) image perturbed via FGSM / PGD / stress transform,
+   re-run through step 3 for a second output set
+5. Reliability Feature Engine builds a vector from probabilities,
+   confidence, margin, entropy, and perturbation-derived behavior
+6. XGBoost consumes the vector → reliability probability (0–1)
+7. Abstention layer compares score to a validation-tuned threshold
+     score ≥ threshold → ACCEPT  → show prediction + Grad-CAM
+     score <  threshold → ABSTAIN → flag for human review
 8. Grad-CAM renders a heatmap for the accepted prediction
-   (and, in stress-test mode, a side-by-side clean vs. perturbed map)
+   (clean vs. perturbed, side by side, in stress-test mode)
 ```
 
-### 5.4 Why two separately-trained models are used
+</details>
 
-EfficientNet-B0 is **not** trained to know whether it is right or wrong — it only outputs a softmax distribution over classes. XGBoost is trained **separately**, on a different signal entirely: not "which disease is this?" but "does this specific prediction look trustworthy, given how the classifier behaved?" This separation is intentional — it lets the reliability detector learn patterns (e.g., low margin, high entropy, large confidence swings under perturbation) that correlate with classifier error, independent of what the underlying disease actually is.
+**Why two separately-trained models.** EfficientNet-B0 is never trained to know whether it is right — it only outputs a softmax distribution. XGBoost is trained on a different signal entirely: not *which disease is this*, but *does this specific prediction look trustworthy given how the classifier behaved*. That separation lets the detector learn patterns — low margin, high entropy, large confidence swings under perturbation — that correlate with error, independent of the underlying disease.
+
+<br/>
 
 ---
 
-## 6. Dataset
+## 06 — Dataset
 
-### HAM10000
+MediShield uses **HAM10000** ("Human Against Machine with 10000 training images") — 10,015 dermoscopic images across 7 diagnostic categories, with metadata for image ID, lesion ID, diagnosis, age, sex, localization, and source.
 
-MediShield uses the **HAM10000** ("Human Against Machine with 10000 training images") skin-lesion dataset.
+The project restricts itself to three classes:
 
-The full dataset contains:
+| Code | Class | Images (full dataset) |
+|---|---|---:|
+| `bkl` | Benign keratosis-like lesions | 1,099 |
+| `mel` | Melanoma | 1,113 |
+| `nv` | Melanocytic nevi | 6,705 |
 
-- 10,015 dermoscopic images
-- 7 diagnostic categories
-- Metadata: image ID, lesion ID, diagnosis, age, sex, localization, dataset source
+These classes are highly imbalanced (`nv` dominates), so training uses an **approximately balanced subset**, not the raw distribution — a target of roughly 600 images per class, ~1,800 total. This is a target, not a hard requirement; the exact number is set once lesion-level splitting is applied.
 
-MediShield restricts itself to **three classes**:
+**Split ratios** — 70% train · 15% validation · 15% test, with class balance preserved as closely as possible while keeping every image of a given lesion in the same split.
 
-| Code | Class |
+<br/>
+
+---
+
+## 07 — Data Splitting
+
+*Leakage prevention*
+
+HAM10000 contains multiple images of the same physical lesion — different angles, zoom, or lighting of the same spot on the same patient — which makes naive random splitting unsafe.
+
+```
+Bad — leaks lesion identity across splits
+  Lesion A → Image A1 → Training
+  Lesion A → Image A2 → Test
+
+Correct — split at the lesion level
+  Lesion A → all images → Training      (or Validation, or Test)
+```
+
+> **Rule:** the same `lesion_id` never appears in more than one of Train / Validation / Test.
+
+<br/>
+
+---
+
+## 08 — Image Preprocessing
+
+| Step | Detail |
 |---|---|
-| `bkl` | Benign keratosis-like lesions |
-| `mel` | Melanoma |
-| `nv` | Melanocytic nevi |
+| Target tensor | `224 × 224 × 3`, RGB |
+| Normalization | ImageNet mean/std — both backbones are ImageNet-pretrained |
+| Training augmentation | Resize, crop, horizontal flip, small rotation — kept mild to avoid unrealistic medical images |
+| Validation / test | Deterministic only — resize + normalize, no random augmentation, for reproducible evaluation |
 
-Inspected class counts in the full dataset:
-
-| Class | Images |
-|---|---:|
-| bkl | 1,099 |
-| mel | 1,113 |
-| nv | 6,705 |
-
-These classes are highly imbalanced (`nv` dominates), so the project uses an **approximately balanced subset** rather than the full raw distribution.
-
-**Target working subset:**
-
-```text
-~600 images/class
-~1,800 total images
-```
-
-This is a target, not a hard requirement — the exact number is determined after lesion-level splitting, once it's clear how many usable images remain per class.
-
-**Split ratios:**
-
-```text
-70% Training
-15% Validation
-15% Test
-```
-
-Class balance is preserved as closely as possible while keeping all images of a given lesion together (see below).
+<br/>
 
 ---
 
-## 7. Data Splitting Rules (Leakage Prevention)
+## 09 — Models
 
-HAM10000 contains **multiple images of the same physical lesion** (different angles/zoom/lighting of the same spot on the same patient). This makes naive random splitting dangerous.
+**EfficientNet-B0 — main classifier.** Predicts the lesion class and exposes the internal signals the reliability layer consumes downstream. Trained via transfer learning — an ImageNet-pretrained backbone with the classification head replaced for 3 classes — rather than from scratch.
 
-**Bad split (causes leakage):**
-
-```text
-Lesion A
- ├── Image A1 → Training
- └── Image A2 → Test
+```
+Image → EfficientNet-B0 → class probabilities → predicted class → deep features
 ```
 
-Splitting at the image level lets lesion-specific visual cues leak from training into the test set, inflating apparent performance.
+**ResNet18 — benchmark.** Used to check whether the reliability problem is specific to one architecture or generalizes across architectures. A comparison point, not the centerpiece; EfficientNet-B0 remains primary and ResNet18 does not need extensive tuning.
 
-**Correct approach — split at the `lesion_id` level:**
-
-```text
-Lesion A
- └── ALL images → Training      (or)
-
-Lesion A
- └── ALL images → Validation    (or)
-
-Lesion A
- └── ALL images → Test
-```
-
-**Rule:** the same `lesion_id` must never appear in more than one of Train / Validation / Test.
+<br/>
 
 ---
 
-## 8. Image Preprocessing
+## 10 — Reliability Detector
 
-**Target input tensor:** `224 × 224 × 3`, RGB.
+XGBoost is not a disease classifier — its job is to predict whether the deep model's prediction is likely correct.
 
-**Normalization:** ImageNet mean/std, because both EfficientNet-B0 and ResNet18 are ImageNet-pretrained.
+```
+EfficientNet → prediction, confidence, probabilities, feature statistics,
+               perturbation behavior  →  XGBoost  →  reliability probability
+```
 
-**Training augmentation** (kept mild, to avoid producing unrealistic medical images):
+```
+reliability = 0.94  →  prediction appears reliable
+reliability = 0.18  →  prediction appears suspicious
+```
 
-- Resize
-- Crop
-- Horizontal flip
-- Small rotation
+The acceptance threshold is chosen experimentally on validation data (see [§14 Abstention](#14--abstention-mechanism)).
 
-**Validation/Test preprocessing:** deterministic only (resize + normalize) — no random augmentation, so evaluation is reproducible.
+**Features**
+
+| Feature | Description |
+|---|---|
+| Prediction probabilities | `P(bkl)`, `P(mel)`, `P(nv)` |
+| Confidence | `max_probability` |
+| Margin | Gap between top-1 and top-2 probability — e.g. 0.94 vs. 0.04 → margin 0.90 |
+| Entropy | How spread out the distribution is — `[.94,.04,.02]` is far more decisive than `[.36,.34,.30]` at the same top-1 class |
+| Perturbation behavior | Confidence change, probability shift, class-flip flag, deep-feature shift, cross-perturbation consistency |
+
+**Training.** Labels come from ground-truth correctness, not an arbitrary confidence cutoff:
+
+```
+ground truth vs. EfficientNet prediction → correct? → yes: reliable (1)  /  no: unreliable (0)
+```
+
+> Reliability is **not** defined as `confidence > 0.5` — that would make the detector reproduce an arbitrary threshold instead of learning a genuine signal. XGBoost instead learns **model behavior → prediction reliability**.
+
+<br/>
 
 ---
 
-## 9. Models
+## 11 — Adversarial Machine Learning
 
-### 9.1 EfficientNet-B0 — Main Classifier
+How the classifier behaves under *intentional* perturbation — one of the project's main differentiators.
 
-**Role:** predict the lesion class and expose internal signals (probabilities, confidence, deep features) that the reliability layer consumes downstream.
+**FGSM** (Fast Gradient Sign Method) — a single gradient-based step: `clean image → gradient-based perturbation → adversarial image → classifier`. Measured: clean vs. adversarial accuracy, prediction changes, confidence changes, attack success rate.
 
-Trained via **transfer learning** (ImageNet-pretrained backbone, classification head replaced for 3 classes) rather than from scratch.
+**PGD** (Projected Gradient Descent) — the same idea applied iteratively: `small perturbation → gradient → update → project → repeat → adversarial image`. A stronger, multi-step version of the same attack family.
 
-```text
-Image
- ↓
-EfficientNet-B0
- ↓
-Class probabilities
- ↓
-Predicted class
- ↓
-Deep features
-```
+> FGSM and PGD are attack *methods*, not separate trained models — transformations applied at evaluation time.
 
-### 9.2 ResNet18 — Benchmark Model
-
-**Role:** determine whether the reliability problem is specific to one CNN architecture, or generalizes across architectures.
-
-ResNet18 is a comparison point, not the centerpiece — EfficientNet-B0 remains the primary model, and ResNet18 does not need extensive tuning.
+<br/>
 
 ---
 
-## 10. Reliability Detector (XGBoost)
+## 12 — Realistic Stress Testing
 
-XGBoost is **not** a disease classifier. Its job is to predict whether the deep-learning model's prediction is likely to be correct/reliable.
+Adversarial attacks alone don't represent everyday failure modes, so the pipeline also runs a stress-test suite of realistic degradations:
 
-```text
-EfficientNet
-     ↓
-Prediction, Confidence, Probabilities,
-Feature statistics, Perturbation behavior
-     ↓
-XGBoost
-     ↓
-Reliability probability
+```
+clean → FGSM → PGD → Gaussian noise → blur → brightness shift → compression
 ```
 
-Example outputs:
+For each condition the pipeline measures accuracy, confidence, whether the prediction changed, the reliability score, and the resulting abstention rate.
 
-```text
-Reliability score = 0.94  →  prediction appears reliable
-Reliability score = 0.18  →  prediction appears suspicious
-```
-
-The acceptance threshold is selected **experimentally**, using validation data (see [Abstention](#14-abstention-mechanism)).
-
-### 10.1 Reliability Features
-
-**Prediction probabilities:** `P(bkl)`, `P(mel)`, `P(nv)`
-
-**Confidence:** `max_probability`
-
-**Prediction margin:** gap between the top-1 and top-2 class probabilities.
-Example: Melanoma = 0.94, Nevus = 0.04 → margin = 0.90
-
-**Entropy:** how spread out the probability distribution is.
-`[0.94, 0.04, 0.02]` is far more decisive than `[0.36, 0.34, 0.30]`, even though both could have the same top-1 class.
-
-**Perturbation behavior** (when an attack/stress transform is applied):
-
-- Confidence change (clean vs. perturbed)
-- Probability shift
-- Whether the predicted class changed
-- Deep feature representation shift
-- Prediction consistency across perturbations
-
-### 10.2 Training the Reliability Detector
-
-Reliability labels are derived from ground-truth correctness, **not** from an arbitrary confidence cutoff:
-
-```text
-Ground-truth label
-        ↓
-Compare with EfficientNet prediction
-        ↓
-     Correct?
-   /        \
- Yes         No
-  ↓           ↓
-Reliable    Unreliable
-   1            0
-```
-
-Important: reliability is **not** defined as `confidence > 0.5`. Doing so would make the detector just reproduce an arbitrary threshold instead of learning a genuine signal. Instead, XGBoost learns the relationship:
-
-```text
-Model behavior → Prediction reliability
-```
+<br/>
 
 ---
 
-## 11. Adversarial Machine Learning
+## 13 — Explainable AI
 
-One of MediShield's main differentiators: testing how the classifier behaves under **intentional** perturbation.
+Grad-CAM is not another model — a visualization method layered on the trained CNN, showing which image regions drove the prediction:
 
-### 11.1 FGSM (Fast Gradient Sign Method)
-
-```text
-Clean image
-   ↓
-Gradient-based perturbation
-   ↓
-Adversarial image
-   ↓
-Classifier
+```
+original image → Grad-CAM → highlighted region
 ```
 
-Measured: clean accuracy, adversarial accuracy, prediction changes, confidence changes, attack success rate.
+The pipeline compares **clean Grad-CAM vs. perturbed Grad-CAM**; a significant shift in highlighted regions is treated as evidence of *explanation instability* — never as proof of medical correctness.
 
-### 11.2 PGD (Projected Gradient Descent)
-
-A stronger, iterative attack:
-
-```text
-Clean image
-     ↓
-Small perturbation
-     ↓
-Model gradient
-     ↓
-Update
-     ↓
-Project perturbation
-     ↓
-Repeat
-     ↓
-Adversarial image
-```
-
-FGSM and PGD are **attack methods**, not separate trained models — they are transformations applied at evaluation time.
+<br/>
 
 ---
 
-## 12. Realistic Stress Testing
+## 14 — Abstention Mechanism
 
-Adversarial attacks alone aren't representative of everyday failure modes, so MediShield also runs a stress-test suite of realistic image degradations:
+A conventional classifier always outputs a prediction. MediShield adds a decision gate instead:
 
-```text
-Clean
-FGSM
-PGD
-Gaussian noise
-Blur
-Brightness change
-Compression
+```
+input → prediction → reliability score
+  high → accept
+  low  → abstain → human review
 ```
 
-For each condition, the pipeline measures accuracy, confidence, whether the prediction changed, the reliability score, and the resulting abstention rate — giving a broader robustness picture than adversarial attacks alone.
-
----
-
-## 13. Explainable AI (Grad-CAM)
-
-Grad-CAM is **not another model** — it's a visualization method layered on top of the trained CNN.
-
-**Purpose:** show which image regions influenced the CNN's prediction.
-
-```text
-Original image
-      ↓
-Grad-CAM
-      ↓
-Highlighted important region
 ```
-
-The pipeline compares:
-
-```text
-Clean image Grad-CAM   vs.   Perturbed image Grad-CAM
-```
-
-A significant shift in highlighted regions is presented as evidence of **explanation instability** — but Grad-CAM output is never claimed to prove medical correctness.
-
----
-
-## 14. Abstention Mechanism
-
-A conventional classifier always outputs a prediction. MediShield instead adds a decision gate:
-
-```text
-Input
- ↓
-Prediction
- ↓
-Reliability score
- ↓
- ┌───────────────┐
- │               │
-High            Low
- │               │
- ↓               ↓
-Accept         Abstain
-                 ↓
-           Human review
-```
-
-Example UI state:
-
-```text
 Prediction:        Melanoma
 Model confidence:  91%
 Reliability:       23%
-Decision:          ⚠ SUSPICIOUS — HUMAN REVIEW RECOMMENDED
+Decision:          SUSPICIOUS — human review recommended
 ```
 
-This is a prototype **safety behavior**, not a clinical recommendation engine.
+> A prototype safety behavior — not a clinical recommendation engine.
+
+<br/>
 
 ---
 
-## 15. Coverage vs. Risk
+## 15 — Coverage vs. Risk
 
-A key evaluation concept for selective prediction systems.
+The core evaluation concept for a selective-prediction system.
 
-Suppose the system receives 100 images and accepts 80 while abstaining on 20:
+If the system receives 100 images, accepts 80, and abstains on 20:
 
-```text
-Coverage = 80 / 100 = 80%
+```
+coverage = 80 / 100 = 80%
 ```
 
-If 2 of the 80 accepted predictions are wrong:
+If 2 of those 80 accepted predictions are wrong:
 
-```text
-Selective risk = 2 / 80 = 2.5%
+```
+selective risk = 2 / 80 = 2.5%
 ```
 
-Plotting selective risk against coverage as the reliability threshold varies is a much stronger evaluation result than reporting plain accuracy alone — it directly shows the value of abstention.
+Plotting selective risk against coverage as the reliability threshold varies is a stronger result than plain accuracy alone — it directly shows what abstention buys.
+
+<br/>
 
 ---
 
-## 16. Experiments
+## 16 — Experiments
 
-| ID | Experiment | Input | Metrics |
-|---|---|---|---|
-| E1 | Baseline EfficientNet | Clean images | Accuracy, Precision, Recall, F1, Confusion matrix |
-| E2 | ResNet18 Benchmark | Clean images | Accuracy, F1, Confusion matrix |
-| E3 | FGSM Attack | FGSM-perturbed images | Clean vs. FGSM accuracy, accuracy drop, confidence change, attack success rate |
-| E4 | PGD Attack | PGD-perturbed images | Clean vs. PGD accuracy, accuracy drop, confidence change, attack success rate |
-| E5 | Reliability Detector | Reliability feature vectors | Accuracy, Precision, Recall, F1, ROC-AUC |
-| E6 | Stress Test Matrix | Clean, FGSM, PGD, Noise, Blur, Brightness, Compression | Accuracy, confidence, prediction consistency, reliability score |
-| E7 | Abstention | Reliability scores + threshold | Coverage, selective risk, accepted-prediction error, abstention rate |
-| E8 | Grad-CAM | Clean vs. perturbed images | Qualitative comparison (+ similarity metric if time permits) |
+| ID | Experiment | Input | Metrics | Status |
+|---|---|---|---|---|
+| E1 | Baseline EfficientNet | Clean images | Accuracy, precision, recall, F1, confusion matrix | `done` |
+| E2 | ResNet18 benchmark | Clean images | Accuracy, F1, confusion matrix | `done` |
+| E3 | FGSM attack | FGSM-perturbed | Accuracy drop, confidence change, attack success rate | `done` |
+| E4 | PGD attack | PGD-perturbed | Accuracy drop, confidence change, attack success rate | `done` |
+| E5 | Reliability detector | Feature vectors | Accuracy, precision, recall, F1, ROC-AUC | `done` |
+| E6 | Stress-test matrix | All perturbation types | Accuracy, confidence, prediction consistency, reliability | `in progress` |
+| E7 | Abstention | Reliability scores + threshold | Coverage, selective risk, abstention rate | `in progress` |
+| E8 | Grad-CAM | Clean vs. perturbed | Qualitative comparison (+ similarity metric, time permitting) | `in progress` |
 
-**Required minimum outputs:** baseline metrics, confusion matrix, FGSM results, PGD results, reliability detector metrics, stress-test comparison, coverage-risk plot, Grad-CAM examples, and a working demo.
+<sub>status values are illustrative — update per row to reflect actual progress</sub>
+
+**Minimum required outputs:** baseline metrics, confusion matrix, FGSM results, PGD results, reliability-detector metrics, stress-test comparison, coverage–risk plot, Grad-CAM examples, working demo.
+
+<br/>
 
 ---
 
-## 17. Results (Template)
+## 17 — Results
 
-*(Fill in after running the experiments above — all values below are placeholders.)*
+<details>
+<summary><sub>expand result tables — placeholders, fill in after running experiments</sub></summary>
+<br/>
 
 **Classification**
 
@@ -625,15 +461,15 @@ Plotting selective risk against coverage as the reliability threshold varies is 
 | EfficientNet-B0 | TBD | TBD | TBD | TBD |
 | ResNet18 | TBD | TBD | TBD | TBD |
 
-**Adversarial Robustness**
+**Adversarial robustness**
 
-| Condition | Accuracy | Avg Confidence | Prediction Change |
+| Condition | Accuracy | Avg. confidence | Prediction change |
 |---|---:|---:|---:|
 | Clean | TBD | TBD | — |
 | FGSM | TBD | TBD | TBD |
 | PGD | TBD | TBD | TBD |
 
-**Stress Testing**
+**Stress testing**
 
 | Condition | Accuracy | Confidence | Reliability |
 |---|---:|---:|---:|
@@ -645,7 +481,7 @@ Plotting selective risk against coverage as the reliability threshold varies is 
 | Brightness | TBD | TBD | TBD |
 | Compression | TBD | TBD | TBD |
 
-**Reliability Detector**
+**Reliability detector**
 
 | Metric | XGBoost |
 |---|---:|
@@ -655,46 +491,63 @@ Plotting selective risk against coverage as the reliability threshold varies is 
 | F1 | TBD |
 | ROC-AUC | TBD |
 
+</details>
+
+<br/>
+
 ---
 
-## 18. Demo Application
+## 18 — Demo
 
-The Streamlit dashboard follows this recommended interface:
+The Streamlit dashboard follows this interface:
 
-```text
+```
 ┌──────────────────────────────────────────┐
-│              MEDISHIELD                  │
-│     Medical AI Reliability Monitor       │
+│  MEDISHIELD — Medical AI Reliability Monitor
 ├──────────────────────────────────────────┤
-│                                          │
-│       [ Upload Skin Lesion Image ]       │
-│                                          │
-│ Prediction:       Melanoma               │
-│ Confidence:       91%                    │
-│ Reliability:      24%                    │
-│                                          │
-│ ⚠ SUSPICIOUS PREDICTION                 │
-│ Human review recommended                 │
-│                                          │
-│ [ Show Grad-CAM ]                        │
-│ [ Run Stress Test ]                      │
+│  [ Upload Skin Lesion Image ]              │
+│                                            │
+│  Prediction:   Melanoma                   │
+│  Confidence:   91%                        │
+│  Reliability:  24%                        │
+│  → SUSPICIOUS — human review recommended  │
+│                                            │
+│  [ Show Grad-CAM ]   [ Run Stress Test ]  │
 └──────────────────────────────────────────┘
 ```
 
-**Expected demo story:**
+**What this demonstrates**
 
-1. **Upload a clean test image** → `Melanoma — 94% confidence, 96% reliability → TRUSTED`
-2. **Click "Run FGSM"** → the system generates a perturbed version of the same image
-3. **Compare predictions** → Original: `Melanoma — 94%` vs. Perturbed: `Nevus — 82%`
-4. **Reliability layer reacts** → `Reliability: 18% → ⚠ SUSPICIOUS / ABSTAIN`
-5. **Show Grad-CAM** → clean explanation vs. perturbed explanation, side by side
+1. Upload a clean image → `Melanoma, 94% confidence, 96% reliability → trusted`
+2. Run FGSM → the system perturbs the same image
+3. Compare — original `Melanoma 94%` vs. perturbed `Nevus 82%`
+4. Reliability layer reacts → `18% → suspicious / abstain`
+5. Grad-CAM shows clean vs. perturbed explanation side by side
 
-Key message conveyed by the demo:
-> The system is not only making a prediction. It is checking whether the prediction remains trustworthy under stress.
+The point of the demo: the system is not only predicting — it is checking whether the prediction stays trustworthy under stress.
+
+<sub>a recorded screen-capture of this exact flow, placed at <code>assets/demo.gif</code> and referenced as <code>![demo](assets/demo.gif)</code>, is the highest-value visual addition to this section.</sub>
+
+<br/>
 
 ---
 
-## 19. Technology Stack
+## 19 — Technology Stack
+
+<div align="center">
+
+<img src="https://img.shields.io/badge/Python-161B22?style=flat-square&logo=python&logoColor=4FD1FF&labelColor=0D1117" height="24"/>
+<img src="https://img.shields.io/badge/PyTorch-161B22?style=flat-square&logo=pytorch&logoColor=4FD1FF&labelColor=0D1117" height="24"/>
+<img src="https://img.shields.io/badge/XGBoost-161B22?style=flat-square&labelColor=0D1117&color=161B22" height="24"/>
+<img src="https://img.shields.io/badge/OpenCV-161B22?style=flat-square&logo=opencv&logoColor=4FD1FF&labelColor=0D1117" height="24"/>
+<img src="https://img.shields.io/badge/Streamlit-161B22?style=flat-square&logo=streamlit&logoColor=4FD1FF&labelColor=0D1117" height="24"/>
+<img src="https://img.shields.io/badge/scikit--learn-161B22?style=flat-square&logo=scikitlearn&logoColor=4FD1FF&labelColor=0D1117" height="24"/>
+<img src="https://img.shields.io/badge/Jupyter-161B22?style=flat-square&logo=jupyter&logoColor=4FD1FF&labelColor=0D1117" height="24"/>
+<img src="https://img.shields.io/badge/Colab-161B22?style=flat-square&logo=googlecolab&logoColor=4FD1FF&labelColor=0D1117" height="24"/>
+
+</div>
+
+<br/>
 
 | Category | Tools |
 |---|---|
@@ -702,7 +555,7 @@ Key message conveyed by the demo:
 | Computer vision | PIL, OpenCV (as needed) |
 | Explainability | Grad-CAM implementation/library |
 | Dashboard | Streamlit |
-| Development | Google Colab (T4 GPU) for training/attacks/evaluation; VS Code for local dev; Git/GitHub for version control |
+| Development | Google Colab (T4 GPU) for training/attacks/evaluation · VS Code for local dev · Git/GitHub for version control |
 
 | Component | Technology | Purpose |
 |---|---|---|
@@ -714,19 +567,22 @@ Key message conveyed by the demo:
 | XAI | Grad-CAM | Visual explanation |
 | Dashboard | Streamlit | Interactive demo |
 
+<br/>
+
 ---
 
-## 20. Project Structure
+## 20 — Project Structure
 
-```text
+<details>
+<summary><sub>expand folder tree</sub></summary>
+<br/>
+
+```
 MediShield/
-│
 ├── README.md
-│
 ├── data/
-│   ├── metadata/            # HAM10000 metadata (image_id, lesion_id, dx, etc.)
-│   └── processed/           # Balanced, lesion-aware train/val/test splits
-│
+│   ├── metadata/            HAM10000 metadata (image_id, lesion_id, dx, ...)
+│   └── processed/           Balanced, lesion-aware train/val/test splits
 ├── notebooks/
 │   ├── 01_data_preparation.ipynb
 │   ├── 02_efficientnet_training.ipynb
@@ -734,93 +590,106 @@ MediShield/
 │   ├── 04_adversarial_attacks.ipynb
 │   ├── 05_reliability_detector.ipynb
 │   └── 06_evaluation.ipynb
-│
 ├── src/
-│   ├── data/                # Dataset loading, lesion-level splitting, transforms
-│   ├── models/               # EfficientNet-B0 / ResNet18 definitions and training
-│   ├── attacks/              # FGSM, PGD, and stress-test transforms
-│   ├── reliability/           # Feature engineering + XGBoost training/inference
-│   ├── explainability/        # Grad-CAM implementation
-│   └── evaluation/            # Metrics, coverage-risk analysis, plotting
-│
+│   ├── data/                Dataset loading, lesion-level splitting, transforms
+│   ├── models/               EfficientNet-B0 / ResNet18 definitions and training
+│   ├── attacks/               FGSM, PGD, and stress-test transforms
+│   ├── reliability/            Feature engineering + XGBoost training/inference
+│   ├── explainability/         Grad-CAM implementation
+│   └── evaluation/             Metrics, coverage-risk analysis, plotting
 ├── models/
 │   ├── efficientnet.pth
 │   ├── resnet18.pth
 │   └── reliability_xgb.json
-│
 ├── results/
-│   ├── metrics/               # Saved JSON/CSV metrics per experiment
-│   └── figures/               # Confusion matrices, robustness plots, Grad-CAM outputs
-│
+│   ├── metrics/                 Saved JSON/CSV metrics per experiment
+│   └── figures/                 Confusion matrices, robustness plots, Grad-CAM outputs
 └── app/
-    └── streamlit_app.py       # Interactive demo
+    └── streamlit_app.py         Interactive demo
 ```
+
+</details>
+
+<br/>
 
 ---
 
-## 21. How to Run
+## 21 — How to Run
 
-> Exact commands depend on the final implementation produced during development — update this section once `src/` and `app/streamlit_app.py` exist.
+<sub>exact commands depend on the final implementation — update once <code>src/</code> and <code>app/streamlit_app.py</code> exist</sub>
 
-**1. Environment setup**
-
+**Environment**
 ```bash
-git clone <repository-url>
+git clone https://github.com/iniya304/MediShield.git
 cd MediShield
 pip install torch torchvision xgboost scikit-learn pillow streamlit
 ```
 
-**2. Prepare the dataset**
-
+**Dataset**
 ```bash
-# Download HAM10000 and place metadata/images under data/
+# download HAM10000 and place metadata/images under data/
 jupyter notebook notebooks/01_data_preparation.ipynb
 ```
 
-**3. Train the models**
-
+**Train**
 ```bash
 jupyter notebook notebooks/02_efficientnet_training.ipynb
 jupyter notebook notebooks/03_resnet_training.ipynb
 ```
 
-**4. Run adversarial evaluation and train the reliability detector**
-
+**Evaluate + reliability detector**
 ```bash
 jupyter notebook notebooks/04_adversarial_attacks.ipynb
 jupyter notebook notebooks/05_reliability_detector.ipynb
 jupyter notebook notebooks/06_evaluation.ipynb
 ```
 
-**5. Launch the interactive demo**
-
+**Demo**
 ```bash
 streamlit run app/streamlit_app.py
 ```
 
-**Recommended hardware:** GPU (e.g., Google Colab T4) for training EfficientNet-B0/ResNet18 and for generating adversarial examples. CPU is sufficient for the Streamlit demo and for XGBoost training/inference.
+<sub>recommended hardware: GPU (e.g. Colab T4) for training and adversarial-example generation; CPU is sufficient for the Streamlit demo and XGBoost inference.</sub>
+
+<br/>
 
 ---
 
-## 22. Scientific Limitations
+## 22 — Scientific Limitations
 
 Stated plainly, for transparency:
 
-- HAM10000 is a benchmark dataset, not a complete representation of real-world clinical populations.
-- The three-class setup (`bkl`, `mel`, `nv`) is a narrowed research scope, not full dermatological coverage.
-- Adversarial attacks (FGSM, PGD) are controlled experiments; they do not simulate every real-world failure mode.
-- Reliability detection based on prediction correctness does **not** prove clinical safety.
-- Grad-CAM explanations are not guaranteed to represent true medical reasoning — they highlight what the CNN attended to, not necessarily clinically meaningful features.
-- The system is **not** a replacement for a dermatologist or a clinical diagnostic workflow.
+- HAM10000 is a benchmark dataset, not a complete representation of real-world clinical populations
+- The three-class setup (`bkl`, `mel`, `nv`) is a narrowed research scope, not full dermatological coverage
+- FGSM/PGD are controlled experiments — they do not simulate every real-world failure mode
+- Reliability detection based on prediction correctness does **not** prove clinical safety
+- Grad-CAM highlights what the CNN attended to, not necessarily clinically meaningful features
+- The system is **not** a replacement for a dermatologist or a clinical diagnostic workflow
 
-**Preferred language:** "research prototype," "model reliability," "prediction-level safety mechanism," "human-review escalation."
+| Preferred language | Avoid |
+|---|---|
+| "research prototype" | "clinically safe" |
+| "model reliability" | "prevents misdiagnosis" |
+| "prediction-level safety mechanism" | "doctor replacement" |
+| "human-review escalation" | — |
 
-**Avoid:** "clinically safe," "prevents misdiagnosis," "doctor replacement."
+<br/>
 
 ---
 
-## 23. Final Project Definition
+<br/>
 
-**MediShield** is a research prototype that adds an AI safety and reliability layer to a medical vision classifier. It combines EfficientNet-based skin-lesion classification with adversarial stress testing, XGBoost-based reliability detection, explainability, and selective abstention. The system evaluates not only *what* the model predicts, but *whether the model's behavior provides evidence that the prediction can be trusted*.
+<div align="center">
 
-> "MediShield challenges the assumption that a confident medical AI prediction is automatically trustworthy. We stress-test the model, learn its reliability patterns, detect suspicious predictions, and allow the system to abstain when confidence alone is not enough."
+<sub>MediShield challenges the assumption that a confident medical AI prediction is automatically trustworthy.<br/>
+Stress-test the model, learn its reliability patterns, detect suspicious predictions, and abstain when confidence isn't enough.</sub>
+
+<br/><br/>
+
+<sub>if this project is useful, consider starring the repository</sub>
+
+<br/><br/>
+
+<img src="https://img.shields.io/badge/-●-4FD1FF?style=flat-square&labelColor=0D1117" width="10"/>
+
+</div>
