@@ -109,7 +109,7 @@ A conventional medical-image pipeline is a single hop:
 Medical Image  →  CNN  →  Disease Prediction
 ```
 ```
-Skin lesion  →  EfficientNet-B0  →  Melanoma, 94%
+Skin lesion  →  MedicalNet  →  Melanoma, 94%
 ```
 
 A high-confidence prediction is not automatically a trustworthy one. A model can be confidently wrong, unstable under imperceptible input changes, fragile against adversarial perturbation, sensitive to routine degradation (noise, blur, compression, brightness), inconsistent in its own explanations, or simply out of distribution.
@@ -168,7 +168,7 @@ Classification + Adversarial Stress Testing + Reliability Detection + Abstention
 
 ```mermaid
 flowchart TD
-    A["Input image"] --> B["EfficientNet-B0<br/>main classifier"]
+    A["Input image"] --> B["MedicalNet<br/>main classifier"]
     B --> C["Probabilities"]
     B --> D["Confidence"]
     B --> E["Deep features"]
@@ -196,7 +196,7 @@ flowchart TD
 
 | Layer | Component | Responsibility |
 |---|---|---|
-| Prediction engine | EfficientNet-B0 | Classify the lesion; expose probabilities, confidence, deep features |
+| Prediction engine | MedicalNet | Classify the lesion; expose probabilities, confidence, deep features |
 | Benchmark | ResNet18 | Independent architecture, checks whether reliability issues are model-specific |
 | Stress layer | FGSM, PGD, noise, blur, brightness, compression | Perturb the input to probe robustness |
 | Feature engine | Custom extraction code | Turn model outputs + perturbation behavior into a feature vector |
@@ -212,7 +212,7 @@ flowchart TD
 ```
 1. User uploads a dermoscopic image
 2. Image preprocessed → 224×224, ImageNet normalization
-3. EfficientNet-B0 outputs class probabilities, predicted class,
+3. MedicalNet outputs class probabilities, predicted class,
    confidence, and a deep feature embedding
 4. (optional) image perturbed via FGSM / PGD / stress transform,
    re-run through step 3 for a second output set
@@ -228,7 +228,7 @@ flowchart TD
 
 </details>
 
-**Why two separately-trained models.** EfficientNet-B0 is never trained to know whether it is right — it only outputs a softmax distribution. XGBoost is trained on a different signal entirely: not *which disease is this*, but *does this specific prediction look trustworthy given how the classifier behaved*. That separation lets the detector learn patterns — low margin, high entropy, large confidence swings under perturbation — that correlate with error, independent of the underlying disease.
+**Why two separately-trained models.** MedicalNet is never trained to know whether it is right — it only outputs a softmax distribution. XGBoost is trained on a different signal entirely: not *which disease is this*, but *does this specific prediction look trustworthy given how the classifier behaved*. That separation lets the detector learn patterns — low margin, high entropy, large confidence swings under perturbation — that correlate with error, independent of the underlying disease.
 
 <br/>
 
