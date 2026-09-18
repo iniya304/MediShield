@@ -102,7 +102,6 @@ MediShield/
 - [ ] Implement Grad-CAM (`src/explainability/gradcam.py`).
 - [ ] Implement Deletion/Insertion curves for faithfulness (`src/explainability/deletion_insertion.py`).
 - [ ] Implement SSIM-based Stability Metrics (Robustness and Consistency) (`src/explainability/stability_metrics.py`).
-- [ ] *(Optional/Medium)* Implement Superpixel alignment score (`src/explainability/superpixel_similarity.py`).
 - [ ] Aggregate into a unified Explainability Quality Score `Q` (`src/explainability/quality_score.py`).
 
 ### **Phase 6: Abstention Logic & Advanced Rigor** (Status: 🟢 Completed)
