@@ -14,3 +14,7 @@ pyyaml
 scipy
 grad-cam
 quantus
+fastapi
+uvicorn
+python-multipart
+google-generativeai
