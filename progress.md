@@ -84,11 +84,11 @@ MediShield/
 - [x] Implement class balancing (target ~600/class).
 - [x] Implement PyTorch Datasets and data augmentation (`src/data/dataset.py`, `src/data/transforms.py`).
 
-### **Phase 2: Base Classification Models** (Status: 🔴 Pending)
+### **Phase 2: Base Classification Models** (Status: 🟢 Completed)
 *Training the primary model and the benchmark.*
-- [ ] Implement and train EfficientNet-B0 Main Classifier (`src/models/efficientnet.py`).
-- [ ] Implement and train ResNet18 Benchmark Classifier (`src/models/resnet.py`).
-- [ ] Implement inference hook to extract probabilities, confidence, and deep features (`get_prediction_bundle`).
+- [x] Implement and train EfficientNet-B0 Main Classifier (`src/models/efficientnet.py`).
+- [x] Implement and train ResNet18 Benchmark Classifier (`src/models/resnet.py`).
+- [x] Implement inference hook to extract probabilities, confidence, and deep features (`get_prediction_bundle`).
 
 ### **Phase 3: Adversarial & Stress Testing** (Status: 🔴 Pending)
 *Applying pressure to evaluate model robustness.*
@@ -136,9 +136,9 @@ MediShield/
 | :--- | :--- | :--- | :--- |
 | Lesion-Level Split | Data Pipeline | 🟢 Completed | High |
 | Data Augmentation | Data Pipeline | 🟢 Completed | High |
-| EfficientNet-B0 Classifier | Models | 🔴 Pending | High |
-| ResNet18 Benchmark | Models | 🔴 Pending | High |
-| Feature Extraction Hook | Models | 🔴 Pending | High |
+| EfficientNet-B0 Classifier | Models | 🟢 Completed | High |
+| ResNet18 Benchmark | Models | 🟢 Completed | High |
+| Feature Extraction Hook | Models | 🟢 Completed | High |
 | FGSM Attack | Stress Testing | 🔴 Pending | High |
 | PGD Attack | Stress Testing | 🔴 Pending | High |
 | Image Corruptions | Stress Testing | 🔴 Pending | High |
