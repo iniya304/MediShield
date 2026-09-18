@@ -1,0 +1,1157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MediShield — Architecture & Research Plan (Judge Review)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Literata:ital,opsz,wght@0,18..36,400;0,18..36,500;0,18..36,600;1,18..36,400&display=swap" rel="stylesheet">
+<style>
+/* ============ TOKENS ============ */
+:root{
+  --bg:#F3F6FA;
+  --bg-panel:#FFFFFF;
+  --bg-raised:#FFFFFF;
+  --grid-line: rgba(18,35,64,0.07);
+  --ink:#10192B;
+  --ink-dim:#54607A;
+  --ink-faint:#8892A8;
+  --border: rgba(16,25,43,0.13);
+  --border-soft: rgba(16,25,43,0.08);
+  --accent-trust:#0E8C86;
+  --accent-trust-bg: rgba(14,140,134,0.10);
+  --accent-caution:#B15C0A;
+  --accent-caution-bg: rgba(177,92,10,0.10);
+  --accent-structure:#2E4E96;
+  --accent-structure-soft: rgba(46,78,150,0.10);
+  --code-bg: #0F1626;
+  --code-ink: #D9E2F2;
+  --shadow: 0 1px 2px rgba(16,25,43,0.06), 0 8px 24px rgba(16,25,43,0.06);
+  --serif: 'Literata', Georgia, 'Iowan Old Style', serif;
+  --sans: 'Space Grotesk', 'Segoe UI', system-ui, sans-serif;
+  --mono: 'SF Mono', 'IBM Plex Mono', Menlo, Consolas, monospace;
+  --radius: 3px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0A0E17;
+    --bg-panel:#0F1522;
+    --bg-raised:#131A29;
+    --grid-line: rgba(180,200,235,0.055);
+    --ink:#E8EDF6;
+    --ink-dim:#98A4BE;
+    --ink-faint:#6B7793;
+    --border: rgba(200,215,240,0.14);
+    --border-soft: rgba(200,215,240,0.08);
+    --accent-trust:#3FD6C9;
+    --accent-trust-bg: rgba(63,214,201,0.12);
+    --accent-caution:#F2A94E;
+    --accent-caution-bg: rgba(242,169,78,0.12);
+    --accent-structure:#7B9CEE;
+    --accent-structure-soft: rgba(123,156,238,0.14);
+    --code-bg: #060A12;
+    --code-ink: #DCE6F7;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 12px 28px rgba(0,0,0,0.35);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0A0E17; --bg-panel:#0F1522; --bg-raised:#131A29;
+  --grid-line: rgba(180,200,235,0.055); --ink:#E8EDF6; --ink-dim:#98A4BE; --ink-faint:#6B7793;
+  --border: rgba(200,215,240,0.14); --border-soft: rgba(200,215,240,0.08);
+  --accent-trust:#3FD6C9; --accent-trust-bg: rgba(63,214,201,0.12);
+  --accent-caution:#F2A94E; --accent-caution-bg: rgba(242,169,78,0.12);
+  --accent-structure:#7B9CEE; --accent-structure-soft: rgba(123,156,238,0.14);
+  --code-bg: #060A12; --code-ink: #DCE6F7;
+  --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 12px 28px rgba(0,0,0,0.35);
+}
+
+*{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+@media (prefers-reduced-motion: reduce){ html{scroll-behavior:auto;} }
+
+body{
+  margin:0;
+  background:
+    linear-gradient(var(--grid-line) 1px, transparent 1px) 0 0/38px 38px,
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px) 0 0/38px 38px,
+    var(--bg);
+  color:var(--ink);
+  font-family:var(--serif);
+  font-size:17px;
+  line-height:1.7;
+  -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3,h4,.sans{font-family:var(--sans); letter-spacing:-0.01em;}
+p{max-width:70ch;}
+a{color:var(--accent-structure);}
+::selection{ background: var(--accent-trust-bg); }
+
+/* ============ PROGRESS BAR ============ */
+#progress{
+  position:fixed; top:0; left:0; height:3px; width:0%;
+  background: linear-gradient(90deg, var(--accent-structure), var(--accent-trust));
+  z-index:500; transition: width .08s linear;
+}
+
+/* ============ TOP BAR (mobile) ============ */
+.topbar{
+  display:none;
+  position:sticky; top:0; z-index:100;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom:1px solid var(--border-soft);
+  padding:12px 18px;
+  align-items:center; justify-content:space-between;
+}
+.topbar .brand{font-family:var(--sans); font-weight:600; font-size:15px;}
+.topbar button{
+  font-family:var(--sans); background:none; border:1px solid var(--border);
+  color:var(--ink); border-radius:var(--radius); padding:6px 10px; font-size:13px; cursor:pointer;
+}
+
+/* ============ LAYOUT ============ */
+.shell{ display:grid; grid-template-columns: 258px 1fr; max-width:1320px; margin:0 auto; }
+.sidebar{
+  position:sticky; top:0; align-self:start; height:100vh; overflow-y:auto;
+  padding:34px 18px 34px 28px; border-right:1px solid var(--border-soft);
+  scrollbar-width:thin;
+}
+.sidebar::-webkit-scrollbar{width:6px;}
+.sidebar::-webkit-scrollbar-thumb{background:var(--border); border-radius:4px;}
+
+.brand-block{ margin-bottom:28px; }
+.brand-block .mark{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:34px; height:34px; border-radius:8px;
+  background: var(--accent-structure-soft); color: var(--accent-structure);
+  font-size:17px; margin-bottom:10px;
+}
+.brand-block h1{ font-size:19px; margin:0 0 4px; }
+.brand-block .tag{ color:var(--ink-dim); font-size:12.5px; line-height:1.45; font-family:var(--sans); }
+
+nav.toc{ font-family:var(--sans); font-size:13px; }
+nav.toc a{
+  display:block; padding:5px 10px; margin:1px 0; border-radius:var(--radius);
+  color:var(--ink-dim); text-decoration:none; border-left:2px solid transparent;
+  transition: color .15s ease, border-color .15s ease, background .15s ease;
+}
+nav.toc a:hover{ color:var(--ink); background:var(--border-soft); }
+nav.toc a.active{ color:var(--accent-structure); border-left-color:var(--accent-structure); background:var(--accent-structure-soft); font-weight:500; }
+
+.main{ min-width:0; padding: 0 0 80px; }
+
+/* ============ HERO ============ */
+.hero{
+  padding: 64px 56px 40px; border-bottom:1px solid var(--border-soft);
+  position:relative; overflow:hidden;
+}
+.hero .eyebrow-status{
+  display:inline-flex; align-items:center; gap:7px; font-family:var(--sans);
+  font-size:12.5px; color:var(--ink-dim); border:1px solid var(--border); border-radius:20px;
+  padding:5px 12px 5px 9px; margin-bottom:22px;
+}
+.eyebrow-status .dot{width:7px;height:7px;border-radius:50%; background:var(--accent-trust); box-shadow:0 0 0 3px var(--accent-trust-bg); animation:blink 2.4s ease-in-out infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:.4;}}
+@media (prefers-reduced-motion: reduce){ .eyebrow-status .dot{ animation:none; } }
+
+.hero h2{ font-size:clamp(32px,4.2vw,50px); line-height:1.08; margin:0 0 18px; max-width:15ch; font-weight:700;}
+.hero .pitch{ font-family:var(--serif); font-style:italic; font-size:19px; color:var(--ink-dim); max-width:56ch; margin:0 0 10px;}
+.hero .disclaimer{ font-family:var(--sans); font-size:12.5px; color:var(--ink-faint); max-width:60ch; margin:0 0 36px;}
+
+/* ---- Live demo widget ---- */
+.demo-card{
+  border:1px solid var(--border); border-radius:10px; background:var(--bg-panel);
+  box-shadow:var(--shadow); overflow:hidden; max-width:840px;
+}
+.demo-head{
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  padding:14px 20px; border-bottom:1px solid var(--border-soft); font-family:var(--sans);
+  flex-wrap:wrap;
+}
+.demo-head .title{ font-size:13.5px; font-weight:600; color:var(--ink-dim); }
+.scenario-tabs{ display:flex; gap:6px; }
+.scenario-tabs button{
+  font-family:var(--sans); font-size:12.5px; border:1px solid var(--border); background:transparent;
+  color:var(--ink-dim); padding:6px 12px; border-radius:20px; cursor:pointer; transition:.15s ease;
+}
+.scenario-tabs button:hover{ color:var(--ink); }
+.scenario-tabs button.active{ background:var(--ink); color:var(--bg); border-color:var(--ink); }
+
+.demo-body{ display:grid; grid-template-columns: 1.1fr 1fr; gap:0; }
+.demo-visual{ padding:22px 20px; border-right:1px solid var(--border-soft); }
+.demo-readout{ padding:22px 24px; display:flex; flex-direction:column; justify-content:center; gap:14px;}
+.readout-row{ display:flex; align-items:baseline; justify-content:space-between; font-family:var(--sans); }
+.readout-row .k{ font-size:12.5px; color:var(--ink-faint); }
+.readout-row .v{ font-size:20px; font-weight:600; transition: color .3s ease; }
+.status-pill{
+  font-family:var(--sans); font-size:13px; font-weight:600; padding:9px 14px; border-radius:8px;
+  display:flex; align-items:center; gap:8px; transition: background .3s ease, color .3s ease;
+}
+.status-pill svg{ width:15px; height:15px; flex:none; }
+#demoCaption{ font-family:var(--sans); font-size:12px; color:var(--ink-faint); padding:12px 20px; border-top:1px solid var(--border-soft);}
+
+.mini-flow{ display:flex; flex-direction:column; gap:0; }
+.mini-node{
+  font-family:var(--sans); font-size:12px; border:1px solid var(--border); border-radius:6px;
+  padding:8px 12px; background:var(--bg); color:var(--ink-dim); position:relative; transition: all .3s ease;
+}
+.mini-node.on{ border-color:var(--accent-structure); color:var(--ink); background:var(--accent-structure-soft); }
+.mini-node.accept-on{ border-color:var(--accent-trust); color:var(--ink); background:var(--accent-trust-bg); }
+.mini-node.abstain-on{ border-color:var(--accent-caution); color:var(--ink); background:var(--accent-caution-bg); }
+.mini-connector{ width:1px; height:14px; background:var(--border); margin-left:16px; }
+.mini-connector.on{ background:var(--accent-structure); }
+
+@media(max-width: 720px){ .demo-body{ grid-template-columns:1fr; } .demo-visual{ border-right:none; border-bottom:1px solid var(--border-soft);} }
+
+/* ============ SECTIONS ============ */
+.section{ padding: 46px 56px; border-bottom:1px solid var(--border-soft); scroll-margin-top:20px; }
+.section:last-of-type{ border-bottom:none; }
+.section .kicker{ font-family:var(--sans); font-size:12.5px; color:var(--accent-structure); font-weight:600; margin-bottom:8px;}
+.section h2{ font-size:26px; margin:0 0 18px; }
+.section h3{ font-size:17px; margin: 28px 0 10px; font-weight:600;}
+.section p{ color:var(--ink); }
+.section p.dim, .muted{ color:var(--ink-dim); }
+.lede{ font-size:18px; color:var(--ink-dim); max-width:62ch; }
+
+blockquote{
+  margin: 18px 0; padding: 14px 20px; border-left:3px solid var(--accent-structure);
+  background:var(--accent-structure-soft); border-radius:0 8px 8px 0; font-style:italic;
+  color:var(--ink); max-width:64ch;
+}
+blockquote.not{ border-left-color: var(--accent-caution); background:var(--accent-caution-bg); }
+
+ul,ol{ padding-left:22px; max-width:66ch; }
+li{ margin-bottom:6px; }
+
+/* ---- tables ---- */
+table{ width:100%; border-collapse:collapse; font-family:var(--sans); font-size:13.5px; margin:14px 0; }
+th,td{ text-align:left; padding:9px 12px; border-bottom:1px solid var(--border-soft); }
+th{ color:var(--ink-faint); font-weight:600; font-size:12px; text-transform:none; }
+td{ color:var(--ink); }
+tr:last-child td{ border-bottom:none; }
+.table-wrap{ overflow-x:auto; border:1px solid var(--border-soft); border-radius:8px; }
+.table-wrap table{ margin:0; }
+.table-wrap th, .table-wrap td{ padding:10px 14px; }
+
+/* ---- code ---- */
+pre{
+  background:var(--code-bg); color:var(--code-ink); border-radius:8px; padding:16px 18px;
+  overflow-x:auto; font-family:var(--mono); font-size:13px; line-height:1.6; position:relative;
+  border:1px solid rgba(255,255,255,0.06);
+}
+code{ font-family:var(--mono); }
+.code-block{ position:relative; margin:14px 0; }
+.copy-btn{
+  position:absolute; top:9px; right:9px; font-family:var(--sans); font-size:11.5px;
+  background:rgba(255,255,255,0.08); color:#cfe0ff; border:1px solid rgba(255,255,255,0.14);
+  padding:5px 9px; border-radius:5px; cursor:pointer; transition:.15s ease;
+}
+.copy-btn:hover{ background:rgba(255,255,255,0.16); }
+.diagram-block{
+  background:var(--bg-panel); border:1px solid var(--border-soft); border-radius:8px;
+  padding:16px 18px; font-family:var(--mono); font-size:12.5px; line-height:1.55; color:var(--ink-dim);
+  overflow-x:auto; margin:14px 0; white-space:pre;
+}
+
+/* ---- cards / grids ---- */
+.card-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(230px,1fr)); gap:14px; margin:16px 0; }
+.card{ border:1px solid var(--border-soft); border-radius:8px; padding:16px 18px; background:var(--bg-panel); }
+.card h4{ font-size:14.5px; margin:0 0 6px; }
+.card p{ font-size:13.5px; color:var(--ink-dim); margin:0; }
+
+.chip-row{ display:flex; flex-wrap:wrap; gap:8px; margin:14px 0; }
+.chip{
+  font-family:var(--sans); font-size:12.5px; border:1px solid var(--border); border-radius:20px;
+  padding:6px 13px; color:var(--ink-dim); background:var(--bg-panel);
+}
+.chip.structure{ border-color:var(--accent-structure); color:var(--accent-structure); background:var(--accent-structure-soft);}
+
+/* ---- callout ---- */
+.callout{
+  border:1px solid var(--accent-caution); border-radius:8px; padding:18px 20px; margin:16px 0;
+  background:var(--accent-caution-bg);
+}
+.callout h4{ font-family:var(--sans); font-size:13.5px; color:var(--accent-caution); margin:0 0 8px; font-weight:600;}
+.callout p, .callout li{ font-size:14px; }
+
+.stat-grid{ display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:14px; margin:20px 0 10px;}
+.stat{ border:1px solid var(--border-soft); border-radius:8px; padding:16px 18px; background:var(--bg-panel);}
+.stat .num{ font-family:var(--sans); font-size:30px; font-weight:700; color:var(--accent-structure); }
+.stat .label{ font-family:var(--sans); font-size:12px; color:var(--ink-dim); margin-top:2px;}
+
+/* ---- architecture diagram ---- */
+.diagram-wrap{
+  border:1px solid var(--border-soft); border-radius:10px; background:var(--bg-panel); padding:10px;
+  margin:20px 0; overflow-x:auto;
+}
+.diagram-wrap svg{ display:block; margin:0 auto; min-width:640px; }
+.node-box{ fill:var(--bg-panel); stroke:var(--border); stroke-width:1.4; }
+.node-box.structure{ stroke:var(--accent-structure); fill:var(--accent-structure-soft); }
+.node-box.trust{ stroke:var(--accent-trust); fill:var(--accent-trust-bg); }
+.node-box.caution{ stroke:var(--accent-caution); fill:var(--accent-caution-bg); }
+.node-box.dashed{ stroke-dasharray:4 3; }
+.node-text{ font-family:var(--sans); font-size:12.5px; fill:var(--ink); text-anchor:middle; }
+.node-text.small{ font-size:10.8px; fill:var(--ink-dim); }
+.edge{ fill:none; stroke:var(--border); stroke-width:1.4; marker-end:url(#arrow); }
+.edge.trust{ stroke:var(--accent-trust); marker-end:url(#arrowTrust); }
+.edge.caution{ stroke:var(--accent-caution); marker-end:url(#arrowCaution); }
+.edge.dashed{ stroke-dasharray:4 3; }
+#spine{ stroke:var(--accent-structure); stroke-width:1.8; stroke-dasharray:6 5; animation: flow 1.6s linear infinite; marker-end:url(#arrowStructure); }
+@keyframes flow{ to{ stroke-dashoffset:-22; } }
+@media (prefers-reduced-motion: reduce){ #spine{ animation:none; } }
+.node-group{ cursor:default; }
+.node-group:hover .node-box{ filter:brightness(1.03); }
+
+/* ---- accordion ---- */
+.accordion-item{ border:1px solid var(--border-soft); border-radius:8px; margin-bottom:8px; overflow:hidden; background:var(--bg-panel);}
+.accordion-item summary{
+  list-style:none; cursor:pointer; padding:14px 18px; display:flex; align-items:center;
+  justify-content:space-between; gap:12px; font-family:var(--sans); font-size:14px; font-weight:600;
+}
+.accordion-item summary::-webkit-details-marker{ display:none; }
+.accordion-item summary .id{
+  font-family:var(--sans); font-size:11.5px; font-weight:700; color:var(--accent-structure);
+  border:1px solid var(--accent-structure); border-radius:5px; padding:2px 7px; margin-right:10px;
+}
+.accordion-item summary .chev{ transition:transform .2s ease; color:var(--ink-faint); flex:none; }
+.accordion-item[open] summary .chev{ transform:rotate(90deg); }
+.accordion-item .acc-body{ padding:0 18px 16px 18px; font-size:14px; color:var(--ink-dim); }
+.acc-body table{ margin-top:4px; }
+
+/* ---- tabs ---- */
+.tabbar{ display:flex; gap:6px; flex-wrap:wrap; margin: 14px 0 0; font-family:var(--sans); }
+.tabbar button{
+  border:1px solid var(--border); background:var(--bg-panel); color:var(--ink-dim); font-size:12.5px;
+  padding:7px 13px; border-radius:6px 6px 0 0; cursor:pointer; border-bottom:none; transition:.15s;
+  position:relative; top:1px;
+}
+.tabbar button.active{ color:var(--ink); background:var(--bg-panel); border-bottom:2px solid var(--bg-panel); font-weight:600; }
+.tabbar button:not(.active){ background:transparent; border-color:transparent; }
+.tab-panel-wrap{ border:1px solid var(--border-soft); border-radius:0 8px 8px 8px; background:var(--bg-panel); }
+.tab-panel{ display:none; padding:16px 18px; }
+.tab-panel.active{ display:block; }
+
+/* ---- coverage/risk slider ---- */
+.slider-card{ border:1px solid var(--border-soft); border-radius:10px; background:var(--bg-panel); padding:22px 24px; margin:18px 0;}
+.slider-top{ display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:10px; font-family:var(--sans); margin-bottom:6px;}
+.slider-top .lbl{ font-size:12.5px; color:var(--ink-faint); }
+.slider-readout{ display:flex; gap:22px; font-family:var(--sans); }
+.slider-readout .item .n{ font-size:22px; font-weight:700; }
+.slider-readout .item .n.cov{ color:var(--accent-structure); }
+.slider-readout .item .n.risk{ color:var(--accent-caution); }
+.slider-readout .item .l{ font-size:11.5px; color:var(--ink-faint); }
+input[type=range]{ width:100%; margin:14px 0 4px; accent-color: var(--accent-structure); }
+.slider-note{ font-family:var(--sans); font-size:11.5px; color:var(--ink-faint); }
+
+/* ---- gradcam toggle ---- */
+.gradcam-card{ border:1px solid var(--border-soft); border-radius:10px; background:var(--bg-panel); padding:20px; margin:16px 0;}
+.gradcam-toggle{ display:flex; gap:6px; margin-bottom:14px; }
+.gradcam-toggle button{ font-family:var(--sans); font-size:12.5px; border:1px solid var(--border); background:transparent; color:var(--ink-dim); padding:6px 12px; border-radius:18px; cursor:pointer;}
+.gradcam-toggle button.active{ background:var(--ink); color:var(--bg); border-color:var(--ink); }
+.gradcam-grid{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.gradcam-panel{ text-align:center; }
+.gradcam-panel .lbl{ font-family:var(--sans); font-size:12px; color:var(--ink-faint); margin-bottom:8px; }
+.gradcam-panel svg{ width:100%; height:auto; border-radius:8px; background:var(--bg); border:1px solid var(--border-soft);}
+.blob{ transition: cx .5s ease, cy .5s ease, r .5s ease, opacity .5s ease; }
+
+/* ---- pull quote / closing ---- */
+.closing{ text-align:left; }
+.closing blockquote{ font-size:19px; max-width:58ch; margin-top:20px; }
+
+footer.page-footer{ padding:30px 56px 60px; font-family:var(--sans); font-size:12.5px; color:var(--ink-faint); }
+
+/* ---- responsive ---- */
+@media(max-width:980px){
+  .shell{ grid-template-columns:1fr; }
+  .sidebar{ position:fixed; top:0; left:0; height:100vh; width:78vw; max-width:300px; z-index:200;
+    background:var(--bg); transform:translateX(-100%); transition:transform .25s ease; box-shadow:var(--shadow); }
+  .sidebar.open{ transform:translateX(0); }
+  .topbar{ display:flex; }
+  .hero{ padding:40px 22px 28px; }
+  .section{ padding:34px 22px; }
+  footer.page-footer{ padding:24px 22px 48px; }
+}
+:focus-visible{ outline:2px solid var(--accent-structure); outline-offset:2px; }
+</style>
+</head>
+<body>
+
+<div id="progress"></div>
+
+<div class="topbar">
+  <span class="brand">🛡️ MediShield</span>
+  <button id="navToggle">Contents</button>
+</div>
+
+<div class="shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand-block">
+      <span class="mark">🛡️</span>
+      <h1>MediShield</h1>
+      <div class="tag">AI safety &amp; reliability layer for medical vision models — first-round judge review</div>
+    </div>
+    <nav class="toc" id="toc">
+      <a href="#problem">1. Problem &amp; Motivation</a>
+      <a href="#solution">2. Proposed Solution</a>
+      <a href="#architecture">3. System Architecture</a>
+      <a href="#models">4. AI/ML Models</a>
+      <a href="#dataset">5. Dataset &amp; Training</a>
+      <a href="#features">6. Key Features &amp; Workflow</a>
+      <a href="#innovation">7. Innovation</a>
+      <a href="#implementation">8. Implementation &amp; Deployment</a>
+      <a href="#impact">9. Impact &amp; Future Scope</a>
+    </nav>
+  </aside>
+
+  <main class="main">
+
+    <!-- ============ HERO ============ -->
+    <section class="hero" id="overview">
+      <div class="eyebrow-status"><span class="dot"></span> pre-hackathon review — architecture &amp; research plan, code not yet written</div>
+      <h2>Can we trust the model's prediction?</h2>
+      <p class="pitch">MediShield doesn't just ask "what does the image show?" — it asks whether that answer still holds up once the model is pushed, perturbed, and stress-tested.</p>
+      <p class="disclaimer">This page presents the architecture and research plan for our hackathon build. It is a research-prototype design, not a clinical diagnostic system.</p>
+
+      <div class="callout" style="max-width:840px; margin-bottom:26px;">
+        <h4>Where this stands today</h4>
+        <ul>
+          <li><strong>Done:</strong> problem definition, research questions, full system architecture, model selection, dataset plan, evaluation methodology.</li>
+          <li><strong>Not started:</strong> dataset download/preprocessing, model training, adversarial evaluation, reliability detector, demo app. All of it is scoped to begin at hackathon kickoff.</li>
+          <li>Every number on this page other than public HAM10000 dataset statistics is illustrative — used to explain how the system is <em>designed</em> to behave, not a reported result.</li>
+        </ul>
+      </div>
+
+      <div class="demo-card">
+        <div class="demo-head">
+          <span class="title">Simulated walkthrough — intended demo flow</span>
+          <div class="scenario-tabs" id="scenarioTabs">
+            <button data-s="clean" class="active">Clean image</button>
+            <button data-s="fgsm">FGSM attack</button>
+            <button data-s="pgd">PGD attack</button>
+          </div>
+        </div>
+        <div class="demo-body">
+          <div class="demo-visual">
+            <div class="mini-flow" id="miniFlow">
+              <div class="mini-node on" data-n="input">Input image</div>
+              <div class="mini-connector on"></div>
+              <div class="mini-node on" data-n="model">EfficientNet‑B0</div>
+              <div class="mini-connector on"></div>
+              <div class="mini-node on" data-n="xgb">XGBoost reliability</div>
+              <div class="mini-connector on"></div>
+              <div class="mini-node" data-n="decision">Reliability score</div>
+              <div class="mini-connector"></div>
+              <div class="mini-node" data-n="outcome">Accept / Abstain</div>
+            </div>
+          </div>
+          <div class="demo-readout">
+            <div class="readout-row"><span class="k">Prediction</span><span class="v" id="rPred">Melanoma</span></div>
+            <div class="readout-row"><span class="k">Model confidence</span><span class="v" id="rConf">94%</span></div>
+            <div class="readout-row"><span class="k">Reliability score</span><span class="v" id="rRel">96%</span></div>
+            <div class="status-pill" id="rStatus"></div>
+          </div>
+        </div>
+        <div id="demoCaption">Simulated placeholder values from the design spec, not real model output — nothing has been trained yet. This shows how the finished system is meant to behave.</div>
+      </div>
+    </section>
+
+    <!-- ============ 1. PROBLEM ============ -->
+    <section class="section" id="problem">
+      <div class="kicker">01 — Problem &amp; motivation</div>
+      <h2>What problem are we solving?</h2>
+      <p class="lede">Medical vision models are usually evaluated on accuracy alone. A model can be highly accurate on average and still be wrong, confidently, on the one case in front of you — and today's pipelines have no way to flag that.</p>
+
+      <h3>Why it matters</h3>
+      <ul>
+        <li>A high-confidence prediction is not automatically a trustworthy one.</li>
+        <li>A classifier can be wrong with high confidence, unstable under small input changes, or fragile against adversarial and everyday image degradation (noise, blur, compression, brightness shifts).</li>
+        <li>Its explanations (e.g. Grad‑CAM) can shift under perturbation without any visible warning to the user.</li>
+        <li>It can silently encounter inputs outside the distribution it was trained on.</li>
+      </ul>
+
+      <h3>Who is affected</h3>
+      <p>Anyone relying on an automated skin-lesion classifier as a decision-support signal — dermatology triage tools, telehealth screening, and research pipelines — inherits this blind spot whenever the system outputs a number with no indication of how much to trust it.</p>
+
+      <h3>Research question</h3>
+      <blockquote>Can we detect when a medical vision model's prediction has become unreliable, especially under adversarial or realistic image perturbations?</blockquote>
+      <ol>
+        <li>How much does model performance degrade under FGSM and PGD attacks?</li>
+        <li>Does model confidence change when the input is perturbed?</li>
+        <li>Can behavioral features help detect incorrect predictions?</li>
+        <li>Can an XGBoost reliability model distinguish trustworthy from suspicious predictions?</li>
+        <li>Can abstention reduce error among predictions the system chooses to accept?</li>
+        <li>Do explanations change when the input is manipulated?</li>
+      </ol>
+    </section>
+
+    <!-- ============ 2. SOLUTION ============ -->
+    <section class="section" id="solution">
+      <div class="kicker">02 — Proposed solution</div>
+      <h2>What we're building</h2>
+      <p class="lede">A reliability and safety layer wrapped around a medical image classifier — the system evaluates not only <em>what</em> it predicts, but whether its own behavior gives evidence the prediction can be trusted.</p>
+
+      <div class="chip-row">
+        <span class="chip structure">Classification</span><span class="muted sans">→</span>
+        <span class="chip structure">Attack</span><span class="muted sans">→</span>
+        <span class="chip structure">Observe behavior</span><span class="muted sans">→</span>
+        <span class="chip structure">Detect unreliability</span><span class="muted sans">→</span>
+        <span class="chip structure">Abstain</span><span class="muted sans">→</span>
+        <span class="chip structure">Explain</span>
+      </div>
+
+      <h3>How it solves the problem</h3>
+      <p>Instead of trusting the classifier's own confidence score, a second, independently trained model (XGBoost) learns — from ground-truth correctness, not an arbitrary threshold — what a <em>reliable</em> prediction looks like versus a <em>suspicious</em> one. When reliability is low, the system abstains and routes the case to a human reviewer rather than forcing an answer.</p>
+
+      <blockquote class="not">Not the pitch: "We trained a skin-cancer classifier."</blockquote>
+      <blockquote>The pitch: "We built a reliability and safety layer around a medical vision model and tested whether it can recognize when its own prediction becomes unreliable."</blockquote>
+    </section>
+
+    <!-- ============ 3. ARCHITECTURE ============ -->
+    <section class="section" id="architecture">
+      <div class="kicker">03 — System architecture</div>
+      <h2>System &amp; technical architecture</h2>
+      <div class="callout" style="border-color:var(--border); background:var(--bg-panel);">
+        <h4 style="color:var(--ink-dim);">Scope note</h4>
+        <p style="margin:0;">MediShield is a single research pipeline, not a multi-tier web application. There is no database and no backend API layer — the "frontend" is a Streamlit page that calls the ML pipeline directly in-process. The only external service is the HAM10000 dataset download and (optionally) Google Colab for GPU training compute.</p>
+      </div>
+
+      <h3>3.1 Pipeline diagram <span class="chip" style="margin-left:6px;">Planned — not yet implemented</span></h3>
+      <div class="diagram-wrap">
+        <svg viewBox="0 0 900 840" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="MediShield architecture diagram">
+          <defs>
+            <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--border)"/></marker>
+            <marker id="arrowStructure" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--accent-structure)"/></marker>
+            <marker id="arrowTrust" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--accent-trust)"/></marker>
+            <marker id="arrowCaution" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="var(--accent-caution)"/></marker>
+          </defs>
+          <rect class="node-box dashed" x="20" y="24" width="180" height="46" rx="6"/>
+          <text class="node-text small" x="110" y="43">Perturbation suite</text>
+          <text class="node-text small" x="110" y="57">FGSM · PGD · noise · blur…</text>
+          <path class="edge dashed" d="M110,70 C110,110 260,90 340,45"/>
+          <g class="node-group"><title>The dermoscopic image submitted for evaluation.</title>
+          <rect class="node-box" x="340" y="20" width="200" height="50" rx="6"/>
+          <text class="node-text" x="440" y="49">Input image</text></g>
+          <path id="spine" d="M440,70 L440,110"/>
+          <g class="node-group"><title>Transfer-learned CNN that classifies the lesion and exposes internal signals.</title>
+          <rect class="node-box structure" x="340" y="110" width="200" height="56" rx="6"/>
+          <text class="node-text" x="440" y="134">EfficientNet‑B0</text>
+          <text class="node-text small" x="440" y="150">main classifier</text></g>
+          <path class="edge" d="M400,166 C330,190 200,195 170,210"/>
+          <path d="M440,166 L440,210" class="edge" id="spine2"/>
+          <path class="edge" d="M480,166 C550,190 680,195 710,210"/>
+          <g class="node-group"><title>Class probabilities: P(bkl), P(mel), P(nv).</title>
+          <rect class="node-box" x="90" y="210" width="160" height="44" rx="6"/>
+          <text class="node-text" x="170" y="237">Probabilities</text></g>
+          <g class="node-group"><title>max_probability — the model's own confidence.</title>
+          <rect class="node-box" x="360" y="210" width="160" height="44" rx="6"/>
+          <text class="node-text" x="440" y="237">Confidence</text></g>
+          <g class="node-group"><title>Deep feature embedding from the CNN backbone.</title>
+          <rect class="node-box" x="630" y="210" width="160" height="44" rx="6"/>
+          <text class="node-text" x="710" y="237">Deep features</text></g>
+          <path class="edge" d="M170,254 C170,285 300,290 360,306"/>
+          <path class="edge" d="M440,254 L440,300"/>
+          <path class="edge" d="M710,254 C710,285 580,290 520,306"/>
+          <g class="node-group"><title>Assembles probabilities, margin, entropy, and perturbation-behavior features into one vector.</title>
+          <rect class="node-box structure" x="310" y="300" width="260" height="56" rx="6"/>
+          <text class="node-text" x="440" y="324">Reliability feature engine</text>
+          <text class="node-text small" x="440" y="340">margin · entropy · Δconfidence</text></g>
+          <path class="edge" d="M440,356 L440,392"/>
+          <g class="node-group"><title>Binary classifier trained to predict whether the EfficientNet prediction is correct.</title>
+          <rect class="node-box structure" x="360" y="392" width="160" height="50" rx="6"/>
+          <text class="node-text" x="440" y="422">XGBoost</text></g>
+          <path class="edge" d="M440,442 L440,478"/>
+          <g class="node-group"><title>A probability in [0,1] that the current prediction can be trusted.</title>
+          <rect class="node-box" x="330" y="478" width="220" height="50" rx="6"/>
+          <text class="node-text" x="440" y="508">Reliability score</text></g>
+          <path class="edge trust" d="M400,528 C340,545 280,548 255,560"/>
+          <path class="edge caution" d="M480,528 C560,545 620,548 625,560"/>
+          <g class="node-group"><rect class="node-box trust" x="200" y="560" width="110" height="40" rx="20"/><text class="node-text" x="255" y="585">HIGH</text></g>
+          <g class="node-group"><rect class="node-box caution" x="570" y="560" width="110" height="40" rx="20"/><text class="node-text" x="625" y="585">LOW</text></g>
+          <path class="edge trust" d="M255,600 L255,630"/>
+          <path class="edge caution" d="M625,600 L625,630"/>
+          <g class="node-group"><title>The prediction is presented to the user with full explanation.</title>
+          <rect class="node-box trust" x="170" y="630" width="170" height="50" rx="6"/>
+          <text class="node-text" x="255" y="660">ACCEPT</text></g>
+          <g class="node-group"><title>The prediction is withheld; the case is flagged for a human reviewer.</title>
+          <rect class="node-box caution" x="540" y="630" width="170" height="50" rx="6"/>
+          <text class="node-text" x="625" y="660">ABSTAIN</text></g>
+          <path class="edge trust" d="M255,680 L255,710"/>
+          <path class="edge caution" d="M625,680 L625,710"/>
+          <g class="node-group"><title>Final class shown to the user.</title>
+          <rect class="node-box" x="170" y="710" width="170" height="44" rx="6"/>
+          <text class="node-text" x="255" y="737">Prediction</text></g>
+          <path class="edge" d="M255,754 L255,774"/>
+          <g class="node-group"><title>Heatmap of the image regions that drove the prediction.</title>
+          <rect class="node-box" x="170" y="774" width="170" height="44" rx="6"/>
+          <text class="node-text" x="255" y="801">Grad‑CAM</text></g>
+          <g class="node-group"><title>Case is routed to a qualified reviewer instead of being auto-resolved.</title>
+          <rect class="node-box caution" x="540" y="710" width="170" height="50" rx="6"/>
+          <text class="node-text" x="625" y="740">Human review</text></g>
+        </svg>
+      </div>
+      <p class="muted" style="font-family:var(--sans); font-size:12.5px;">Hover any node for its role. Teal marks the accept path, amber marks abstain.</p>
+
+      <h3>3.2 Component breakdown</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Layer</th><th>Component</th><th>Role</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td>Input / UI</td><td>Streamlit page</td><td>Image upload, results display</td><td>Planned</td></tr>
+            <tr><td>Prediction engine</td><td>EfficientNet‑B0</td><td>Classify the lesion; expose probabilities, confidence, features</td><td>Planned</td></tr>
+            <tr><td>Benchmark</td><td>ResNet18</td><td>Check whether reliability issues are architecture-specific</td><td>Planned</td></tr>
+            <tr><td>Stress layer</td><td>FGSM, PGD, noise, blur, brightness, compression</td><td>Perturb the input to probe robustness</td><td>Planned</td></tr>
+            <tr><td>Feature engine</td><td>Custom Python code</td><td>Turn model outputs + perturbation behavior into a feature vector</td><td>Planned</td></tr>
+            <tr><td>Reliability detector</td><td>XGBoost (binary)</td><td>Predict whether the classifier's prediction is likely correct</td><td>Planned</td></tr>
+            <tr><td>Decision layer</td><td>Threshold logic</td><td>Convert a reliability score into Accept / Abstain</td><td>Planned</td></tr>
+            <tr><td>Explainability</td><td>Grad‑CAM</td><td>Visualize which regions drove the decision</td><td>Planned</td></tr>
+            <tr><td>Database</td><td>—</td><td>Not used — no persistence layer in scope</td><td>N/A</td></tr>
+            <tr><td>External APIs</td><td>—</td><td>None beyond the public HAM10000 dataset download</td><td>N/A</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>3.3 Data flow: Input → Processing → AI/ML → Decision → Output</h3>
+      <ol>
+        <li><strong>Input:</strong> user uploads a dermoscopic image</li>
+        <li><strong>Processing:</strong> resize to 224×224, ImageNet normalization; optionally apply FGSM / PGD / stress perturbation</li>
+        <li><strong>AI/ML:</strong> EfficientNet‑B0 → class probabilities, confidence, deep features → reliability feature engine → XGBoost → reliability score</li>
+        <li><strong>Decision:</strong> reliability score vs. threshold → Accept or Abstain</li>
+        <li><strong>Output:</strong> Accept → predicted class + Grad‑CAM heatmap shown to the user. Abstain → case flagged "human review recommended," no prediction forced</li>
+      </ol>
+    </section>
+
+    <!-- ============ 4. AI/ML MODELS ============ -->
+    <section class="section" id="models">
+      <div class="kicker">04 — AI/ML models</div>
+      <h2>AI/ML models</h2>
+      <p class="lede">Every model below is <strong>planned</strong> — selected and specified, not yet trained. None have been implemented as of this review.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Model / method</th><th>What it does</th><th>Input → Output</th><th>Why selected</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td>EfficientNet‑B0</td><td>Main lesion classifier (transfer learning)</td><td>224×224 image → class probs + features</td><td>Strong accuracy/compute trade-off; ImageNet-pretrained</td><td><span class="chip">Planned</span></td></tr>
+            <tr><td>ResNet18</td><td>Benchmark classifier</td><td>224×224 image → class probs</td><td>Tests if reliability issues are architecture-specific</td><td><span class="chip">Planned</span></td></tr>
+            <tr><td>XGBoost</td><td>Reliability detector (binary)</td><td>Feature vector → reliability probability</td><td>Fast, interpretable on tabular behavioral features</td><td><span class="chip">Planned</span></td></tr>
+            <tr><td>FGSM</td><td>Single-step adversarial attack (method, not a model)</td><td>Image + gradient → perturbed image</td><td>Standard, fast robustness probe</td><td><span class="chip">Planned</span></td></tr>
+            <tr><td>PGD</td><td>Iterative adversarial attack (method, not a model)</td><td>Image + gradient → perturbed image</td><td>Stronger robustness probe than FGSM</td><td><span class="chip">Planned</span></td></tr>
+            <tr><td>Grad‑CAM</td><td>Explainability method (not a model)</td><td>Trained CNN + image → attention heatmap</td><td>Standard CNN explanation technique</td><td><span class="chip">Planned</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Planned reliability features (for XGBoost)</h3>
+      <div class="chip-row">
+        <span class="chip">P(bkl), P(mel), P(nv)</span>
+        <span class="chip">max confidence</span>
+        <span class="chip">prediction margin</span>
+        <span class="chip">entropy</span>
+        <span class="chip">confidence change</span>
+        <span class="chip">probability shift</span>
+        <span class="chip">prediction changed?</span>
+        <span class="chip">feature-space shift</span>
+        <span class="chip">perturbation consistency</span>
+      </div>
+
+      <h3>Planned label derivation (not confidence thresholding)</h3>
+      <div class="diagram-block">Ground-truth label
+        ↓
+Compare with EfficientNet prediction
+        ↓
+     Correct?
+   /        \
+ Yes         No
+  ↓           ↓
+Reliable    Unreliable
+   1            0</div>
+      <p class="muted" style="font-size:13.5px;">Labels come from ground-truth correctness, not <code>confidence &gt; 0.5</code> — otherwise the detector would just reproduce an arbitrary threshold instead of learning a real signal.</p>
+
+      <h3>Planned evaluation experiments</h3>
+      <div id="accordion">
+        <details class="accordion-item" open>
+          <summary><span><span class="id">E1</span>Baseline EfficientNet</span><span class="chev">›</span></summary>
+          <div class="acc-body">Clean images → accuracy, precision, recall, F1, confusion matrix. Establishes baseline performance.</div>
+        </details>
+        <details class="accordion-item">
+          <summary><span><span class="id">E2</span>ResNet18 benchmark</span><span class="chev">›</span></summary>
+          <div class="acc-body">Accuracy, F1, confusion matrix — compares a second architecture.</div>
+        </details>
+        <details class="accordion-item">
+          <summary><span><span class="id">E3</span>FGSM attack</span><span class="chev">›</span></summary>
+          <div class="acc-body">Clean vs. FGSM accuracy, accuracy drop, confidence change, attack success rate.</div>
+        </details>
+        <details class="accordion-item">
+          <summary><span><span class="id">E4</span>PGD attack</span><span class="chev">›</span></summary>
+          <div class="acc-body">Clean vs. PGD accuracy, accuracy drop, confidence change, attack success rate.</div>
+        </details>
+        <details class="accordion-item">
+          <summary><span><span class="id">E5</span>Reliability detector</span><span class="chev">›</span></summary>
+          <div class="acc-body">Train XGBoost on reliability features → accuracy, precision, recall, F1, ROC-AUC.</div>
+        </details>
+        <details class="accordion-item">
+          <summary><span><span class="id">E6</span>Stress-test matrix</span><span class="chev">›</span></summary>
+          <div class="acc-body">Clean, FGSM, PGD, noise, blur, brightness, compression → accuracy, confidence, consistency, reliability.</div>
+        </details>
+        <details class="accordion-item">
+          <summary><span><span class="id">E7</span>Abstention</span><span class="chev">›</span></summary>
+          <div class="acc-body">Apply the reliability threshold → coverage, selective risk, accepted-prediction error, abstention rate.</div>
+        </details>
+        <details class="accordion-item">
+          <summary><span><span class="id">E8</span>Grad‑CAM</span><span class="chev">›</span></summary>
+          <div class="acc-body">Compare clean vs. perturbed explanations, qualitatively (+ similarity metric if time permits).</div>
+        </details>
+      </div>
+
+      <h3 style="margin-top:22px;">Planned metrics — no results yet</h3>
+      <div class="tabbar" id="resultsTabs">
+        <button class="active" data-t="cls">Classification</button>
+        <button data-t="adv">Adversarial</button>
+        <button data-t="rel">Reliability</button>
+      </div>
+      <div class="tab-panel-wrap">
+        <div class="tab-panel active" data-p="cls">
+          <table><thead><tr><th>Model</th><th>Accuracy</th><th>Precision</th><th>Recall</th><th>F1</th></tr></thead>
+          <tbody><tr><td>EfficientNet‑B0</td><td>TBD</td><td>TBD</td><td>TBD</td><td>TBD</td></tr>
+          <tr><td>ResNet18</td><td>TBD</td><td>TBD</td><td>TBD</td><td>TBD</td></tr></tbody></table>
+        </div>
+        <div class="tab-panel" data-p="adv">
+          <table><thead><tr><th>Condition</th><th>Accuracy</th><th>Avg. confidence</th><th>Prediction change</th></tr></thead>
+          <tbody><tr><td>Clean</td><td>TBD</td><td>TBD</td><td>—</td></tr>
+          <tr><td>FGSM</td><td>TBD</td><td>TBD</td><td>TBD</td></tr>
+          <tr><td>PGD</td><td>TBD</td><td>TBD</td><td>TBD</td></tr></tbody></table>
+        </div>
+        <div class="tab-panel" data-p="rel">
+          <table><thead><tr><th>Metric</th><th>XGBoost</th></tr></thead>
+          <tbody><tr><td>Accuracy</td><td>TBD</td></tr><tr><td>Precision</td><td>TBD</td></tr>
+          <tr><td>Recall</td><td>TBD</td></tr><tr><td>F1</td><td>TBD</td></tr><tr><td>ROC-AUC</td><td>TBD</td></tr></tbody></table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 5. DATASET ============ -->
+    <section class="section" id="dataset">
+      <div class="kicker">05 — Dataset &amp; training</div>
+      <h2>Dataset &amp; model training</h2>
+      <p class="lede">Source, classes, and split rules are finalized. Download and preprocessing have not been run yet.</p>
+
+      <div class="stat-grid">
+        <div class="stat"><div class="num" data-count="10015">0</div><div class="label">total images (HAM10000)</div></div>
+        <div class="stat"><div class="num" data-count="3">0</div><div class="label">classes used</div></div>
+        <div class="stat"><div class="num" data-count="1800">0</div><div class="label">target balanced subset</div></div>
+        <div class="stat"><div class="num" data-count="70">0</div><div class="label">% train split</div></div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Code</th><th>Class</th><th>Images in full dataset</th></tr></thead>
+          <tbody>
+            <tr><td><code>bkl</code></td><td>Benign keratosis-like lesions</td><td>1,099</td></tr>
+            <tr><td><code>mel</code></td><td>Melanoma</td><td>1,113</td></tr>
+            <tr><td><code>nv</code></td><td>Melanocytic nevi</td><td>6,705</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>These counts are the public dataset's actual composition. Classes are highly imbalanced (<code>nv</code> dominates), so training will use an approximately balanced subset (~600 images/class, ~1,800 total) split 70% train / 15% validation / 15% test.</p>
+
+      <h3>Leakage prevention rule</h3>
+      <div class="card-grid">
+        <div class="card" style="border-color:var(--accent-caution); background:var(--accent-caution-bg);">
+          <h4 style="color:var(--accent-caution);">✕ Bad split</h4>
+          <p>Same lesion's images split across Train and Test — leaks lesion-specific cues.</p>
+        </div>
+        <div class="card" style="border-color:var(--accent-trust); background:var(--accent-trust-bg);">
+          <h4 style="color:var(--accent-trust);">✓ Correct split</h4>
+          <p>All images of a given lesion go to the same split — split happens at <code>lesion_id</code> level, never image level.</p>
+        </div>
+      </div>
+
+      <h3>Preprocessing plan</h3>
+      <div class="chip-row">
+        <span class="chip">224 × 224 × 3</span><span class="chip">RGB</span><span class="chip">ImageNet normalization</span>
+        <span class="chip">Mild augmentation: resize, crop, flip, small rotation</span>
+      </div>
+
+      <h3>Known data limitations</h3>
+      <ul>
+        <li>HAM10000 is a benchmark dataset, not a complete representation of real-world clinical populations.</li>
+        <li>The three-class scope (<code>bkl</code>, <code>mel</code>, <code>nv</code>) is a narrowed research scope, not full dermatological coverage.</li>
+        <li>No training has occurred — evaluation metrics do not exist yet and will not be fabricated in this presentation.</li>
+      </ul>
+    </section>
+
+    <!-- ============ 6. FEATURES & WORKFLOW ============ -->
+    <section class="section" id="features">
+      <div class="kicker">06 — Key features &amp; workflow</div>
+      <h2>Key features &amp; workflow</h2>
+
+      <h3>How a user will interact with the system</h3>
+      <ol>
+        <li>Upload a skin-lesion image to the Streamlit interface</li>
+        <li>System returns predicted class, model confidence, and a reliability score</li>
+        <li>If reliability is high → prediction is shown with a Grad‑CAM heatmap</li>
+        <li>If reliability is low → system abstains and flags the case "human review recommended" instead of forcing an answer</li>
+        <li>Optional: user triggers a stress test (FGSM / PGD / noise / blur / brightness / compression) to see how the prediction, confidence, and reliability shift</li>
+      </ol>
+
+      <h3>Feature: Abstention mechanism</h3>
+      <div class="diagram-block">Input → Prediction → Reliability score
+                              /            \
+                          High             Low
+                           ↓                 ↓
+                        Accept           Abstain
+                                             ↓
+                                      Human review</div>
+      <div class="demo-card" style="max-width:420px; margin-top:8px;">
+        <div class="demo-readout" style="padding:18px 20px;">
+          <div class="readout-row"><span class="k">Prediction</span><span class="v" style="font-size:16px;">Melanoma</span></div>
+          <div class="readout-row"><span class="k">Model confidence</span><span class="v" style="font-size:16px;">91%</span></div>
+          <div class="readout-row"><span class="k">Reliability</span><span class="v" style="font-size:16px; color:var(--accent-caution);">23%</span></div>
+          <div class="status-pill" style="background:var(--accent-caution-bg); color:var(--accent-caution);">⚠ Suspicious — human review recommended</div>
+        </div>
+      </div>
+      <p class="muted" style="font-size:13px; margin-top:8px;">Mockup of the intended UI state — a prototype safety behavior, not a clinical recommendation engine.</p>
+
+      <h3>Feature: Coverage vs. risk evaluation</h3>
+      <p class="muted" style="font-size:13.5px;">As the acceptance threshold rises, the system accepts fewer cases (lower coverage) but the accepted ones should be more trustworthy (lower selective risk). Drag the slider — this is a synthetic curve illustrating the mechanic, not a measured result.</p>
+      <div class="slider-card">
+        <div class="slider-top">
+          <span class="lbl sans">Drag to move the acceptance threshold</span>
+          <div class="slider-readout">
+            <div class="item"><div class="n cov" id="covOut">100%</div><div class="l">coverage</div></div>
+            <div class="item"><div class="n risk" id="riskOut">15.0%</div><div class="l">selective risk</div></div>
+          </div>
+        </div>
+        <svg viewBox="0 0 640 160" width="100%" height="160" id="covRiskChart">
+          <line x1="30" y1="10" x2="30" y2="140" stroke="var(--border)" stroke-width="1"/>
+          <line x1="30" y1="140" x2="620" y2="140" stroke="var(--border)" stroke-width="1"/>
+          <polyline id="covLine" fill="none" stroke="var(--accent-structure)" stroke-width="2"/>
+          <polyline id="riskLine" fill="none" stroke="var(--accent-caution)" stroke-width="2"/>
+          <circle id="covDot" r="4.5" fill="var(--accent-structure)"/>
+          <circle id="riskDot" r="4.5" fill="var(--accent-caution)"/>
+          <line id="thresholdLine" stroke="var(--border)" stroke-dasharray="3 3"/>
+        </svg>
+        <input type="range" min="0" max="10" value="0" id="thresholdSlider">
+        <div class="slider-note">Threshold ≥ <span id="threshVal">0.00</span> · synthetic curve for illustration — real coverage/risk numbers come from Experiment E7 once measured.</div>
+      </div>
+
+      <h3>Feature: Explainability (Grad‑CAM)</h3>
+      <div class="gradcam-card">
+        <div class="gradcam-toggle" id="gradcamToggle">
+          <button class="active" data-g="clean">Clean image</button>
+          <button data-g="perturbed">Perturbed image</button>
+        </div>
+        <div class="gradcam-grid">
+          <div class="gradcam-panel">
+            <div class="lbl">Original</div>
+            <svg viewBox="0 0 200 160"><rect width="200" height="160" fill="none"/><circle cx="100" cy="80" r="46" fill="none" stroke="var(--border)" stroke-width="1.4"/><circle cx="100" cy="80" r="8" fill="var(--ink-faint)"/></svg>
+          </div>
+          <div class="gradcam-panel">
+            <div class="lbl" id="gradcamLbl">Grad‑CAM — attention region</div>
+            <svg viewBox="0 0 200 160">
+              <rect width="200" height="160" fill="none"/>
+              <circle class="blob" id="blobOuter" cx="100" cy="80" r="46" fill="var(--accent-trust)" opacity="0.12"/>
+              <circle class="blob" id="blobMid" cx="100" cy="80" r="28" fill="var(--accent-trust)" opacity="0.28"/>
+              <circle class="blob" id="blobCore" cx="100" cy="80" r="12" fill="var(--accent-trust)" opacity="0.55"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+      <p class="muted" style="font-size:13px;">Schematic illustration, not a real model output. A shifted region under perturbation is evidence of explanation instability, not proof of medical correctness either way.</p>
+    </section>
+
+    <!-- ============ 7. INNOVATION ============ -->
+    <section class="section" id="innovation">
+      <div class="kicker">07 — Innovation / novelty</div>
+      <h2>What differentiates this from a basic classifier</h2>
+      <div class="card-grid">
+        <div class="card">
+          <h4>A second model judges trust, not just confidence</h4>
+          <p>Reliability is learned by a separate XGBoost model trained on behavioral features — not read off the softmax output, which a plain classifier would do.</p>
+        </div>
+        <div class="card">
+          <h4>Labels come from correctness, not a threshold</h4>
+          <p>Reliability = 1 when the classifier was actually right, 0 when wrong — never <code>confidence &gt; 0.5</code>, which would just reproduce an arbitrary cutoff.</p>
+        </div>
+        <div class="card">
+          <h4>Adversarial + everyday robustness, combined</h4>
+          <p>FGSM/PGD attacks are paired with realistic degradations (noise, blur, brightness, compression) in one stress suite, instead of only adversarial or only accuracy metrics.</p>
+        </div>
+        <div class="card">
+          <h4>Coverage vs. selective risk, not plain accuracy</h4>
+          <p>Evaluation reports how error changes as the system becomes more selective — a stronger, decision-relevant result than a single accuracy number.</p>
+        </div>
+        <div class="card">
+          <h4>Explanation stability as a signal</h4>
+          <p>Grad‑CAM is compared clean vs. perturbed to flag when the model's own reasoning shifts — not used merely as a static visualization.</p>
+        </div>
+        <div class="card">
+          <h4>Abstention as a first-class output</h4>
+          <p>The system can decline to answer. That option doesn't exist in a standard classifier pipeline.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 8. IMPLEMENTATION & DEPLOYMENT ============ -->
+    <section class="section" id="implementation">
+      <div class="kicker">08 — Implementation &amp; deployment</div>
+      <h2>Implementation &amp; deployment</h2>
+
+      <div class="callout" style="border-color:var(--border); background:var(--bg-panel);">
+        <h4 style="color:var(--ink-dim);">What's actually deployed right now</h4>
+        <p style="margin:0;">Only this presentation page is deployed — a static site on Vercel, used to communicate the architecture and plan for judge review. It does not run inference; no ML pipeline is live yet.</p>
+      </div>
+
+      <h3>Planned technology stack</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Component</th><th>Technology</th><th>Purpose</th></tr></thead>
+          <tbody>
+            <tr><td>Main classifier</td><td>EfficientNet‑B0</td><td>Medical image classification</td></tr>
+            <tr><td>Benchmark</td><td>ResNet18</td><td>Architecture comparison</td></tr>
+            <tr><td>Reliability model</td><td>XGBoost</td><td>Predict prediction reliability</td></tr>
+            <tr><td>Attacks</td><td>FGSM, PGD</td><td>Adversarial robustness</td></tr>
+            <tr><td>XAI</td><td>Grad‑CAM</td><td>Visual explanation</td></tr>
+            <tr><td>Dashboard</td><td>Streamlit</td><td>Interactive demo</td></tr>
+            <tr><td>Training compute</td><td>Google Colab (T4 GPU)</td><td>Model training &amp; attack generation</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Planned project structure</h3>
+      <div class="diagram-block">MediShield/
+│
+├── README.md
+├── data/{metadata, processed}/
+├── notebooks/
+│   ├── 01_data_preparation.ipynb
+│   ├── 02_efficientnet_training.ipynb
+│   ├── 03_resnet_training.ipynb
+│   ├── 04_adversarial_attacks.ipynb
+│   ├── 05_reliability_detector.ipynb
+│   └── 06_evaluation.ipynb
+├── src/{data, models, attacks, reliability, explainability, evaluation}/
+├── models/  (trained weights — not yet produced)
+├── results/{metrics, figures}/
+└── app/streamlit_app.py</div>
+
+      <h3>How it will run, once built</h3>
+      <div class="code-block"><button class="copy-btn">Copy</button><pre>git clone &lt;repository-url&gt;
+cd MediShield
+pip install torch torchvision xgboost scikit-learn pillow streamlit</pre></div>
+      <div class="code-block"><button class="copy-btn">Copy</button><pre>jupyter notebook notebooks/01_data_preparation.ipynb
+# … train, attack, evaluate via notebooks 02–06</pre></div>
+      <div class="code-block"><button class="copy-btn">Copy</button><pre>streamlit run app/streamlit_app.py</pre></div>
+    </section>
+
+    <!-- ============ 9. IMPACT & FUTURE ============ -->
+    <section class="section" id="impact">
+      <div class="kicker">09 — Impact, scalability &amp; future scope</div>
+      <h2>Impact, scalability &amp; future scope</h2>
+
+      <h3>Real-world relevance</h3>
+      <p>A reliability layer that flags low-confidence-or-unstable predictions for human review is directly useful anywhere an AI model is used as a decision-support signal rather than a final answer — e.g. triage screening tools that need a defensible "when not to trust the model" behavior.</p>
+
+      <h3>Scalability</h3>
+      <p>The reliability layer is architecturally model-agnostic: the same "extract behavioral features → train a separate reliability detector → threshold into accept/abstain" pattern could wrap other medical imaging classifiers beyond skin lesions, given retraining on the new task's features.</p>
+
+      <div class="callout">
+        <h4>Limitations (stated on purpose)</h4>
+        <ul>
+          <li>HAM10000 is a benchmark dataset, not a full clinical population.</li>
+          <li>The three-class scope is narrowed, not comprehensive dermatology coverage.</li>
+          <li>Adversarial attacks are controlled experiments, not a simulation of every real failure mode.</li>
+          <li>Reliability detection based on correctness does <strong>not</strong> prove clinical safety.</li>
+          <li>Grad‑CAM highlights what the CNN attended to — not guaranteed clinical reasoning.</li>
+          <li>Not a replacement for a dermatologist or a clinical diagnostic workflow.</li>
+        </ul>
+      </div>
+
+      <h3>Future scope</h3>
+      <div class="chip-row">
+        <span class="chip">Out-of-distribution detection</span>
+        <span class="chip">Advanced uncertainty methods</span>
+        <span class="chip">Additional attack types</span>
+        <span class="chip">Advanced explanation-shift metrics</span>
+        <span class="chip">Broader dataset / more classes</span>
+        <span class="chip">Hyperparameter tuning at scale</span>
+      </div>
+      <p class="muted" style="font-size:13.5px;">Preferred language going forward: "research prototype," "model reliability," "human-review escalation." Avoided: "clinically safe," "prevents misdiagnosis," "doctor replacement."</p>
+    </section>
+
+    <footer class="page-footer">MediShield — research prototype, pre-implementation architecture review. Not a clinical diagnostic system.</footer>
+  </main>
+</div>
+
+<script>
+// ---------- progress bar ----------
+const progress = document.getElementById('progress');
+function updateProgress(){
+  const h = document.documentElement;
+  const scrolled = h.scrollTop;
+  const max = h.scrollHeight - h.clientHeight;
+  progress.style.width = (max>0 ? (scrolled/max*100) : 0) + '%';
+}
+document.addEventListener('scroll', updateProgress, {passive:true});
+updateProgress();
+
+// ---------- mobile nav ----------
+const sidebar = document.getElementById('sidebar');
+const navToggle = document.getElementById('navToggle');
+navToggle && navToggle.addEventListener('click', ()=> sidebar.classList.toggle('open'));
+document.querySelectorAll('#toc a').forEach(a=> a.addEventListener('click', ()=> sidebar.classList.remove('open')));
+
+// ---------- scrollspy ----------
+const tocLinks = Array.from(document.querySelectorAll('#toc a'));
+const sections = tocLinks.map(a=> document.querySelector(a.getAttribute('href'))).filter(Boolean);
+const spy = new IntersectionObserver((entries)=>{
+  entries.forEach(entry=>{
+    const id = '#' + entry.target.id;
+    const link = tocLinks.find(a=> a.getAttribute('href')===id);
+    if(!link) return;
+    if(entry.isIntersecting){
+      tocLinks.forEach(l=>l.classList.remove('active'));
+      link.classList.add('active');
+    }
+  });
+},{ rootMargin: '-15% 0px -70% 0px', threshold: 0 });
+sections.forEach(s=> spy.observe(s));
+
+// ---------- animated counters ----------
+const counters = document.querySelectorAll('[data-count]');
+const counterObs = new IntersectionObserver((entries)=>{
+  entries.forEach(entry=>{
+    if(entry.isIntersecting){
+      const el = entry.target;
+      const target = parseInt(el.getAttribute('data-count'),10);
+      const dur = 1100; const start = performance.now();
+      function tick(now){
+        const p = Math.min(1,(now-start)/dur);
+        const eased = 1-Math.pow(1-p,3);
+        el.textContent = Math.round(target*eased).toLocaleString();
+        if(p<1) requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+      counterObs.unobserve(el);
+    }
+  });
+},{threshold:0.4});
+counters.forEach(c=> counterObs.observe(c));
+
+// ---------- hero demo ----------
+const scenarios = {
+  clean:{ pred:'Melanoma', conf:'94%', rel:'96%', status:'trust', label:'✓ Trusted — prediction accepted', active:'accept' },
+  fgsm:{ pred:'Nevus', conf:'82%', rel:'18%', status:'caution', label:'⚠ Suspicious — abstain, human review', active:'abstain' },
+  pgd:{ pred:'Nevus', conf:'79%', rel:'12%', status:'caution', label:'⚠ Suspicious — abstain, human review', active:'abstain' },
+};
+const rPred=document.getElementById('rPred'), rConf=document.getElementById('rConf'), rRel=document.getElementById('rRel'), rStatus=document.getElementById('rStatus');
+const scenarioTabs = document.getElementById('scenarioTabs');
+const miniFlow = document.getElementById('miniFlow');
+
+function paintScenario(key){
+  const s = scenarios[key];
+  rPred.textContent = s.pred; rConf.textContent = s.conf; rRel.textContent = s.rel;
+  rRel.style.color = s.status==='trust' ? 'var(--accent-trust)' : 'var(--accent-caution)';
+  rConf.style.color = 'var(--ink)';
+  rStatus.style.background = s.status==='trust' ? 'var(--accent-trust-bg)' : 'var(--accent-caution-bg)';
+  rStatus.style.color = s.status==='trust' ? 'var(--accent-trust)' : 'var(--accent-caution)';
+  rStatus.innerHTML = s.label;
+
+  const nodes = miniFlow.querySelectorAll('.mini-node');
+  const connectors = miniFlow.querySelectorAll('.mini-connector');
+  nodes.forEach(n=> n.classList.remove('accept-on','abstain-on'));
+  const decisionNode = miniFlow.querySelector('[data-n="decision"]');
+  const outcomeNode = miniFlow.querySelector('[data-n="outcome"]');
+  decisionNode.classList.add('on');
+  connectors[3].classList.add('on');
+  outcomeNode.classList.add(s.active==='accept' ? 'accept-on':'abstain-on');
+  outcomeNode.textContent = s.active==='accept' ? 'Accept → show prediction' : 'Abstain → human review';
+}
+scenarioTabs.addEventListener('click', (e)=>{
+  const btn = e.target.closest('button'); if(!btn) return;
+  scenarioTabs.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  paintScenario(btn.dataset.s);
+});
+paintScenario('clean');
+
+// ---------- grad-cam toggle ----------
+const gradcamToggle = document.getElementById('gradcamToggle');
+const blobOuter=document.getElementById('blobOuter'), blobMid=document.getElementById('blobMid'), blobCore=document.getElementById('blobCore'), gradcamLbl=document.getElementById('gradcamLbl');
+gradcamToggle.addEventListener('click',(e)=>{
+  const btn = e.target.closest('button'); if(!btn) return;
+  gradcamToggle.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  if(btn.dataset.g==='clean'){
+    blobOuter.setAttribute('cx',100); blobOuter.setAttribute('cy',80);
+    blobMid.setAttribute('cx',100); blobMid.setAttribute('cy',80);
+    blobCore.setAttribute('cx',100); blobCore.setAttribute('cy',80);
+    [blobOuter,blobMid,blobCore].forEach(b=> b.setAttribute('fill','var(--accent-trust)'));
+    gradcamLbl.textContent = 'Grad‑CAM — attention region (clean)';
+  } else {
+    blobOuter.setAttribute('cx',138); blobOuter.setAttribute('cy',55);
+    blobMid.setAttribute('cx',142); blobMid.setAttribute('cy',50);
+    blobCore.setAttribute('cx',145); blobCore.setAttribute('cy',47);
+    [blobOuter,blobMid,blobCore].forEach(b=> b.setAttribute('fill','var(--accent-caution)'));
+    gradcamLbl.textContent = 'Grad‑CAM — attention region (perturbed, shifted)';
+  }
+});
+
+// ---------- coverage vs risk slider ----------
+const covData  = [100,94,87,78,68,57,46,35,24,14,5];
+const riskData = [15,13,11,9,7.2,5.6,4.2,3,2,1.2,0.6];
+const chart = document.getElementById('covRiskChart');
+const covLine=document.getElementById('covLine'), riskLine=document.getElementById('riskLine');
+const covDot=document.getElementById('covDot'), riskDot=document.getElementById('riskDot');
+const threshLine=document.getElementById('thresholdLine');
+const slider=document.getElementById('thresholdSlider');
+const covOut=document.getElementById('covOut'), riskOut=document.getElementById('riskOut'), threshVal=document.getElementById('threshVal');
+
+const X0=30, X1=620, Y0=140, Y1=10;
+function xAt(i){ return X0 + (X1-X0)*(i/10); }
+function yAtPct(pct, maxScale){ return Y0 - (Y0-Y1)*(pct/maxScale); }
+const covMax=100, riskMax=16;
+
+function buildPoints(data,maxScale){ return data.map((v,i)=> xAt(i)+','+yAtPct(v,maxScale)).join(' '); }
+covLine.setAttribute('points', buildPoints(covData,covMax));
+riskLine.setAttribute('points', buildPoints(riskData,riskMax));
+
+function render(i){
+  covDot.setAttribute('cx', xAt(i)); covDot.setAttribute('cy', yAtPct(covData[i],covMax));
+  riskDot.setAttribute('cx', xAt(i)); riskDot.setAttribute('cy', yAtPct(riskData[i],riskMax));
+  threshLine.setAttribute('x1', xAt(i)); threshLine.setAttribute('x2', xAt(i));
+  threshLine.setAttribute('y1', Y0); threshLine.setAttribute('y2', Y1);
+  covOut.textContent = covData[i]+'%';
+  riskOut.textContent = riskData[i].toFixed(1)+'%';
+  threshVal.textContent = (i/10).toFixed(2);
+}
+slider.addEventListener('input', ()=> render(parseInt(slider.value,10)));
+render(0);
+
+// ---------- accordion: only one open at a time (optional, keep simple: allow multiple) ----------
+
+// ---------- results tabs ----------
+document.getElementById('resultsTabs').addEventListener('click',(e)=>{
+  const btn=e.target.closest('button'); if(!btn) return;
+  const wrap = btn.closest('.section');
+  wrap.querySelectorAll('#resultsTabs button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  wrap.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  wrap.querySelector('.tab-panel[data-p="'+btn.dataset.t+'"]').classList.add('active');
+});
+
+// ---------- copy buttons ----------
+document.querySelectorAll('.copy-btn').forEach(btn=>{
+  btn.addEventListener('click', async ()=>{
+    const pre = btn.nextElementSibling;
+    const text = pre.innerText;
+    try{
+      await navigator.clipboard.writeText(text);
+      const old = btn.textContent; btn.textContent='Copied';
+      setTimeout(()=> btn.textContent = old, 1400);
+    }catch(err){ /* clipboard unavailable — ignore silently */ }
+  });
+});
+</script>
+</body>
+</html>
