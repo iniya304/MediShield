@@ -1,23 +1,35 @@
 # MediShield — Progress & Implementation Plan
 
-This document tracks the repository structure, file responsibilities, phased implementation plan, and the current progress of the MediShield project. It synthesizes the goals from the Implementation Guide and Improvement Plan.
+This document tracks the repository structure, file responsibilities, phased implementation plan, and the current progress of the MediShield project. It synthesizes the goals from the Implementation Guide, Improvement Plan, and recent architectural pivots (FastAPI integration & Custom XAI Metrics).
 
 ---
 
 ## 1. Repository Structure & File Dictionary
 
-This section outlines the target repository structure and what each file is used for.
+This section outlines the target repository structure and what each file is used for in the production pipeline.
 
 ```text
 MediShield/
 ├── README.md                      # High-level project overview, scientific context, and results template
-├── requirements.txt               # Core dependencies (PyTorch, XGBoost, Streamlit, etc.)
+├── requirements.txt               # Core dependencies (PyTorch, FastAPI, Quantus, XGBoost, etc.)
 ├── progress.md                    # THIS FILE: Tracks implementation phases, features, and progress
 ├── config/
-│   └── config.yaml                # Central hyperparameters, paths, and thresholds
+│   └── config.yaml                # Central hyperparameters, paths, and safety thresholds
 ├── data/
-│   ├── metadata/                  # HAM10000 metadata (e.g., image_id, lesion_id) & OOD metadata
+│   ├── metadata/                  # HAM10000 metadata & OOD metadata
 │   └── processed/                 # Balanced, lesion-aware train/val/test splits + cache
+├── models/                        # Saved model weights (Downloaded from Kaggle)
+│   ├── efficientnet_b0.pth
+│   ├── resnet18.pth
+│   └── reliability_xgb.json
+
+├── api/                           # Production FastAPI Backend Service
+│   ├── main.py                    # Application entry point & POST /predict route
+│   ├── dependencies.py            # Singleton pattern loaders to keep CNN & XGBoost in memory
+│   ├── schemas.py                 # Pydantic schemas (PredictionResponse structure)
+│   └── services/
+│       ├── pipeline.py            # Orchestrates the end-to-end inference flow (Preprocess -> Classify -> XAI -> Decide)
+│       └── gemini_service.py      # Translates numerical metrics into a natural language clinical summary via LLM
 
 ├── src/
 │   ├── utils/
@@ -35,16 +47,15 @@ MediShield/
 │   │   ├── pgd.py                 # Projected Gradient Descent attack
 │   │   └── stress_transforms.py   # Realistic corruptions (noise, blur, brightness, compression)
 │   ├── reliability/
-│   │   ├── features.py            # Feature engineering: margin, entropy, perturbation-deltas
-│   │   ├── baselines.py           # MSP, temperature scaling, entropy, MC-dropout baselines
-│   │   ├── xgb_detector.py        # XGBoost training, evaluation, and inference
+│   │   ├── features.py            # Feature engineering: margin, entropy
+│   │   ├── baselines.py           # MSP, temperature scaling, entropy baselines
+│   │   ├── xgb_detector.py        # XGBoost training, evaluation, and inference wrappers
 │   │   └── shap_analysis.py       # SHAP explanations for XGBoost reliability features
 │   ├── explainability/
-│   │   ├── gradcam.py             # Grad-CAM map generation
-│   │   ├── deletion_insertion.py  # Faithfulness metric (region reduction)
-│   │   ├── stability_metrics.py   # Robustness + consistency (SSIM-based)
-│   │   ├── superpixel_similarity.py # SLIC superpixel alignment scoring
-│   │   └── quality_score.py       # Aggregation into single quality score (Q)
+│   │   ├── gradcam.py             # Wrapper for pytorch-grad-cam library
+│   │   ├── deletion_insertion.py  # Faithfulness Area-Under-Curve (via Quantus)
+│   │   ├── stability_metrics.py   # Custom SSIM-based Robustness & Consistency under perturbations
+│   │   └── quality_score.py       # Aggregation into single quality score (Q = 50% Faithfulness + 50% Stability)
 │   ├── decision/
 │   │   └── abstention.py          # Logic to Accept/Abstain based on Reliability & Explainability
 │   └── evaluation/
@@ -53,15 +64,7 @@ MediShield/
 │       ├── bootstrap_ci.py        # Confidence intervals for headline metrics
 │       ├── kfold.py               # K-fold cross validation harness
 │       └── subgroup_analysis.py   # Accuracy/Reliability breakdown by age, sex, localization
-├── models/                        # Saved model weights (Download from Kaggle and place here)
-│   ├── efficientnet.pth
-│   ├── resnet18.pth
-│   └── reliability_xgb.json
-├── results/                       # Saved outputs
-│   ├── metrics/                   # Saved JSON/CSV metrics per experiment
-│   └── figures/                   # Plots (Coverage-Risk, SHAP, Grad-CAM overlays)
-└── app/
-    └── streamlit_app.py           # Interactive Streamlit Demo Dashboard
+└── results/                       # Saved outputs (metrics and figures)
 ```
 
 ---
@@ -84,40 +87,41 @@ MediShield/
 
 ### **Phase 3: Adversarial & Stress Testing** (Status: 🟢 Completed)
 *Applying pressure to evaluate model robustness.*
-- [ ] Implement FGSM attack (`src/attacks/fgsm.py`).
-- [ ] Implement PGD attack (`src/attacks/pgd.py`).
-- [ ] Implement severity-graded realistic stress transforms: noise, blur, brightness, compression (`src/attacks/stress_transforms.py`).
-- [ ] Build evaluation harness to measure accuracy drops and confidence changes under attack.
+- [x] Implement FGSM attack (`src/attacks/fgsm.py`).
+- [x] Implement PGD attack (`src/attacks/pgd.py`).
+- [x] Implement severity-graded realistic stress transforms: noise, blur, brightness (`src/attacks/stress_transforms.py`).
+- [x] Build evaluation harness to measure accuracy drops and confidence changes under attack.
 
 ### **Phase 4: Reliability Detector & Baselines** (Status: 🟢 Completed)
 *Evaluating if the model knows when it's wrong.*
-- [ ] Implement reliability feature extraction (margin, entropy, perturbation-delta) (`src/reliability/features.py`).
-- [ ] Build the tabular dataset mapping CNN behavior to ground-truth correctness (`build_training_table.py`).
-- [ ] Train XGBoost Reliability Detector and evaluate AUROC (`src/reliability/xgb_detector.py`).
-- [ ] Implement Reliability Baselines: MSP, Temperature Scaling, Entropy (`src/reliability/baselines.py`).
-- [ ] Compare XGBoost vs. Baselines via Coverage-Risk curves (Experiment E9).
+- [x] Implement reliability feature extraction (margin, entropy, perturbation-delta) (`src/reliability/features.py`).
+- [x] Build the tabular dataset mapping CNN behavior to ground-truth correctness.
+- [x] Train XGBoost Reliability Detector and evaluate AUROC (`src/reliability/xgb_detector.py`).
+- [x] Implement Reliability Baselines: MSP, Temperature Scaling, Entropy (`src/reliability/baselines.py`).
 
 ### **Phase 5: Explainability & Quality Scoring** (Status: 🟢 Completed)
-*Visualizing decisions and quantifying explanation quality.*
-- [ ] Implement Grad-CAM (`src/explainability/gradcam.py`).
-- [ ] Implement Deletion/Insertion curves for faithfulness (`src/explainability/deletion_insertion.py`).
-- [ ] Implement SSIM-based Stability Metrics (Robustness and Consistency) (`src/explainability/stability_metrics.py`).
-- [ ] Aggregate into a unified Explainability Quality Score `Q` (`src/explainability/quality_score.py`).
+*Visualizing decisions and rigorously quantifying explanation quality using custom math.*
+- [x] Implement Grad-CAM wrapping the `pytorch-grad-cam` library (`src/explainability/gradcam.py`).
+- [x] Implement Faithfulness metric using Deletion/Insertion AUC via `quantus` (`src/explainability/deletion_insertion.py`).
+- [x] Implement custom **Robustness Score (R)** using SSIM over noise perturbations (`src/explainability/stability_metrics.py`).
+- [x] Implement custom **Consistency Score (C)** using pairwise SSIM across geometric augmentations (`src/explainability/stability_metrics.py`).
+- [x] Aggregate Faithfulness, Robustness, and Consistency into a unified Explainability Quality Score `Q` (`src/explainability/quality_score.py`).
 
 ### **Phase 6: Abstention Logic & Advanced Rigor** (Status: 🟢 Completed)
 *Making the safety decision and ensuring statistical validity.*
-- [ ] Implement dual-gate Abstention Mechanism (Reject if Reliability < T_R OR Quality < T_Q) (`src/decision/abstention.py`).
-- [ ] Add Expected Calibration Error (ECE) diagnostics (`src/evaluation/calibration.py`).
-- [ ] Run SHAP analysis on XGBoost features to explain the safety layer (`src/reliability/shap_analysis.py`).
-- [ ] Implement Bootstrap Confidence Intervals and K-Fold CV (`src/evaluation/bootstrap_ci.py`, `src/evaluation/kfold.py`).
-- [ ] Conduct Subgroup Analysis (Age, Sex, Localization) (`src/evaluation/subgroup_analysis.py`).
-- [ ] *(Optional/Medium)* Evaluate on External OOD Dataset (ISIC 2019/BCN20000).
+- [x] Implement dual-gate Abstention Mechanism (Reject if Reliability < T_R OR Quality < T_Q) (`src/decision/abstention.py`).
+- [x] Add Expected Calibration Error (ECE) diagnostics (`src/evaluation/calibration.py`).
+- [x] Run SHAP analysis on XGBoost features to explain the safety layer (`src/reliability/shap_analysis.py`).
+- [x] Implement Bootstrap Confidence Intervals and K-Fold CV (`src/evaluation/bootstrap_ci.py`, `src/evaluation/kfold.py`).
+- [x] Conduct Subgroup Analysis (Age, Sex, Localization) (`src/evaluation/subgroup_analysis.py`).
 
 ### **Phase 7: Demo Application & Reporting** (Status: 🟢 Completed)
-*Showcasing the pipeline.*
-- [ ] Build interactive Streamlit Dashboard (`app/streamlit_app.py`).
-- [ ] Integrate full pipeline in Demo (Upload -> Classify -> Stress Test -> Reliability Score -> Grad-CAM).
-- [ ] Finalize README with metrics populated in results template.
+*Showcasing the pipeline as a production microservice.*
+- [x] Build FastAPI REST API architecture (`api/main.py`).
+- [x] Orchestrate end-to-end pipeline in a single inference call (`api/services/pipeline.py`).
+- [x] Integrate Gemini LLM for natural-language clinical reporting (`api/services/gemini_service.py`).
+- [x] Encode Grad-CAM overlay as Base64 for seamless frontend rendering.
+- [x] Finalize `requirements.txt` dependencies.
 
 ---
 
@@ -135,16 +139,16 @@ MediShield/
 | Image Corruptions | Stress Testing | 🟢 Completed | High |
 | XGBoost Reliability Model | Reliability | 🟢 Completed | High |
 | Reliability Baselines (MSP, Temp) | Reliability | 🟢 Completed | High |
-| Grad-CAM | Explainability | 🟢 Completed | High |
-| Explainability Stability (SSIM) | Explainability | 🟢 Completed | High |
-| Faithfulness (Deletion/Insertion) | Explainability | 🟢 Completed | High |
-| Explainability Quality Score (Q) | Explainability | 🟢 Completed | Medium |
+| Grad-CAM Output | Explainability | 🟢 Completed | High |
+| Faithfulness (Quantus) | Explainability | 🟢 Completed | High |
+| Custom Robustness (SSIM) | Explainability | 🟢 Completed | High |
+| Custom Consistency (SSIM) | Explainability | 🟢 Completed | High |
+| Explainability Quality Score (Q) | Explainability | 🟢 Completed | High |
 | Dual-Gate Abstention Layer | Decision | 🟢 Completed | High |
 | Coverage-Risk Analysis | Evaluation | 🟢 Completed | High |
 | Calibration Diagnostics (ECE) | Evaluation | 🟢 Completed | Medium |
 | SHAP on XGBoost | Evaluation | 🟢 Completed | Medium |
 | Bootstrap CIs | Evaluation | 🟢 Completed | High |
 | Subgroup Analysis | Evaluation | 🟢 Completed | Medium |
-| OOD Validation | Generalization | 🟢 Completed | Medium-High |
-| Cross-Arch Transfer Test | Generalization | 🟢 Completed | Medium |
-| Streamlit Demo App | Demo | 🟢 Completed | High |
+| FastAPI REST Backend | Architecture | 🟢 Completed | Critical |
+| Gemini Text Summary | Architecture | 🟢 Completed | High |
